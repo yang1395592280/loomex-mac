@@ -1,0 +1,57 @@
+{
+  "schemaVersion": 1,
+  "repository": "https://github.com/lwouis/alt-tab-macos.git",
+  "tag": "v11.10.1",
+  "commit": "c500294bdb01186011a5c64a412b04cef9931bef",
+  "project": "alt-tab-macos.xcodeproj",
+  "license": "GPL-3.0",
+  "integrationStatus": "build-verified candidate on Xcode 27.2 / macOS 27.0 / arm64; not integrated",
+  "dependencies": [
+    {
+      "name": "ShortcutRecorder",
+      "version": "alt-tab-current@52c6273d233f7794e4fd5d22f50d2de0e4e41b19",
+      "source": "https://github.com/lwouis/ShortcutRecorder.git",
+      "license": "CC-BY-4.0",
+      "licenseSource": "https://github.com/lwouis/ShortcutRecorder/blob/52c6273d233f7794e4fd5d22f50d2de0e4e41b19/LICENSE.txt"
+    },
+    {
+      "name": "Sparkle",
+      "version": "2.9.1",
+      "source": "https://github.com/sparkle-project/Sparkle/releases/download/2.9.1/Sparkle-2.9.1.tar.xz",
+      "license": "MIT with bundled external licenses",
+      "licenseSource": "https://github.com/sparkle-project/Sparkle/blob/2.9.1/LICENSE"
+    },
+    {
+      "name": "AppCenter",
+      "version": "4.3.0",
+      "source": "https://github.com/microsoft/appcenter-sdk-apple.git",
+      "license": "MIT",
+      "licenseSource": "https://github.com/microsoft/appcenter-sdk-apple/blob/4.3.0/LICENSE"
+    },
+    {
+      "name": "PLCrashReporter",
+      "version": "1.11.1",
+      "source": "https://github.com/microsoft/plcrashreporter/releases/download/1.11.1/PLCrashReporter-XCFramework-1.11.1.zip",
+      "license": "MIT with bundled external licenses",
+      "vendoredBinary": "vendor/AppCenter/Frameworks/CrashReporter.xcframework/macos-arm64_x86_64/CrashReporter.framework/Versions/A/CrashReporter",
+      "licenseSource": "https://github.com/microsoft/plcrashreporter/blob/1.11.1/LICENSE",
+      "thirdPartyNotices": "https://github.com/microsoft/plcrashreporter/blob/1.11.1/ThirdPartyNotices.txt",
+      "archiveSha256": "21d39ef1c394ec5580d93a00148a508add0e2862d59f692fc7a35e1fb2926e5d",
+      "binarySha256": "f06e5818707d5983793c5910a9ce7b8cbdef9a89f768590d3419d3298df71f3f",
+      "verification": "macOS binary matches the official 1.11.1 release archive; distribution notices still need collection"
+    }
+  ],
+  "sha256": {
+    "LICENCE.md": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986",
+    "alt-tab-macos.xcodeproj/project.pbxproj": "3320571900ca1860a31ffcba4b1855e4f328d50eef34cd890fd926285853b7e8",
+    "config/base.xcconfig": "95d330584e255f90c04f5f67515a76304d14d8eb3d3136efe5efa6819253803d",
+    "scripts/copy_sparkle_helpers.sh": "5503850d67080bddcd2eed778a629469e016bf12c0ed5a5a0a75055fe118d3c2",
+    "vendor/AppCenter/UPSTREAM": "5fdc3fdb24a660e50ba3a0b93640f542440c961bb12a0d41aa13f71c50b7bf79",
+    "vendor/AppCenter/Package.swift": "a26660c5227e14d882c72e227d72cab4a3ce88b9a80bd4ffc84653d10e2c6d6c",
+    "vendor/ShortcutRecorder/UPSTREAM": "d2d91bfc2ce94392e339edee16fc9423dace9eb4a8538d1ca54ceed6d5c20da0",
+    "vendor/ShortcutRecorder/Package.swift": "206053574c0019f4037ccabd006a7d4ea5c89dc875ee2514a3a9c4bb870682cd",
+    "vendor/Sparkle/UPSTREAM": "c250d0261fa12798fd035b453436a11ab858b1bca8b67d44a3c2743683f2e4d1",
+    "vendor/Sparkle/Package.swift": "d41a37e9a5f0d844770c9776e12da6d2491f940c5555bdff5b5d8b8751d06b31",
+    "vendor/AppCenter/Frameworks/CrashReporter.xcframework/macos-arm64_x86_64/CrashReporter.framework/Versions/A/CrashReporter": "f06e5818707d5983793c5910a9ce7b8cbdef9a89f768590d3419d3298df71f3f"
+  }
+}

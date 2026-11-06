@@ -42,7 +42,7 @@ CLASSIC_LAUNCHPAD_SUPPORT_DIR="$PWD/.local-data/launch" \
   "dist/经典启动台.app/Contents/MacOS/ClassicLaunchpad"
 ```
 
-GitHub Actions 在 Apple Silicon macOS runner 上执行构建及脚本内的签名完整性校验；需要图形会话的测试和真实 Dock 交互在本机验证。
+GitHub Actions 在 Apple Silicon macOS runner 上执行构建及脚本内的签名完整性校验；另一个 Ubuntu 任务执行上游验证脚本测试，并下载核对固定 AltTab 源码。需要图形会话的测试和真实 Dock 交互在本机验证。
 
 ## 代码与文档
 
@@ -53,6 +53,7 @@ GitHub Actions 在 Apple Silicon macOS runner 上执行构建及脚本内的签�
 | `build.py` / `make_icon.swift` | 编译、图标生成及本地签名 |
 | [技术选型与整体架构](docs/technical-architecture.md) | 原生技术栈、候选比较、模块依赖、系统 API、线程、权限与工程迁移 |
 | [整体需求与开发方案](docs/requirements-and-development.md) | 功能规格、默认行为、任务拆解、性能预算与验收矩阵 |
+| [P0 构建基线](docs/p0-baseline.md) | AltTab 固定版本、依赖核对、验证命令与当前工具链状态 |
 | [初期产品规划](docs/loomex-mac-plan.md) | 初期构想及开源项目调研，细化方案以以上两份文档为准 |
 | [经典启动台原版说明](docs/classic-launchpad.md) | 迁入前 1.0.6 使用说明，作为历史基线保留 |
 | [开发贡献说明](CONTRIBUTING.md) | 分支、提交和验证方式 |
