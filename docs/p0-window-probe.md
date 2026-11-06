@@ -6,7 +6,9 @@
 
 `Prototypes/WindowProbe/Fixture` 创建普通 AppKit 测试窗口 A、B；`Controller` 提供枚举、聚焦、最小化、恢复和完整验证按钮。两者独立于现有 `Sources/` 与启动台布局，构建结果只写入被忽略的 `.local-data/build/window-probe/`。
 
-控制器核对测试进程的 PID、Bundle ID、路径与启动时间，并只接受当前会话 UUID 对应的窗口标识。每次动作重新解析窗口；跨进程 AX 调用使用串行后台队列和 0.5 秒消息超时，动作后的状态确认有次数上限。程序没有持续窗口扫描、截图、全局输入拦截或网络功能。
+控制器核对测试进程的 PID、Bundle ID、路径与启动时间，并只接受当前会话 UUID 对应的窗口标识。每次动作重新解析窗口；跨进程 AX 调用使用串行后台队列和 0.5 秒消息超时。动作后最多确认 10 次，只在确认阶段重试 `cannotComplete` 临时错误；权限和不支持的操作立即失败。程序没有持续窗口扫描、截图、全局输入拦截或网络功能。
+
+聚焦最小化窗口前先确认展开；macOS 14+ 使用公开的协调激活 API，再显式选择 AX 主窗口并核对焦点。公开激活请求不保证在所有系统与应用上被接受，该实验不替代 AltTab 的完整聚焦兼容方案。
 
 这些限制来自代码。macOS 的辅助功能授权本身允许应用控制其他应用，并不提供“仅限测试窗口”的系统权限范围。授权是手动入口；启动或运行验证不会自动申请权限。未授权时立即显示等待提示并生成阻塞报告，其他应用不进入测试列表。退出控制器时请求终止当前自建测试进程。
 
@@ -17,6 +19,9 @@
 需要 Apple Silicon Mac、Python 3、可用的图形会话和 Xcode 工具链。从仓库根目录执行：
 
 ```sh
+# 验证有限重试、权限拒绝、永久错误和超时，不需要 GUI 或辅助功能授权。
+python3 scripts/window_probe.py --test
+
 # 编译两个隔离应用并校验 ad-hoc 签名。
 python3 scripts/window_probe.py --build
 
@@ -27,7 +32,7 @@ python3 scripts/window_probe.py --launch
 python3 scripts/window_probe.py --launch --verify
 ```
 
-重新构建或使用 `--verify` 启动前先退出旧控制器；已运行的应用不会重新处理启动参数。ad-hoc 重建后系统可能要求重新确认辅助功能权限。
+重新构建或使用 `--verify` 启动前先退出旧控制器；已运行的应用不会重新处理启动参数。ad-hoc 重建会改变签名，系统可能显示开关仍开启但新进程未获授权。本机已遇到这种情况：在系统设置中移除同一原型的旧条目，再添加当前构建后恢复授权；管理员验证由开发者在本机完成。不要据列表开关推断授权成功，以运行进程的检查和报告为准。
 
 如需验证已授权场景，由开发者明确同意后，通过控制器的“辅助功能授权”入口前往系统设置，只为 `Loomex Window Probe` 开启辅助功能。回到控制器点击“运行验证”。此实验不需要屏幕录制权限。
 
@@ -44,7 +49,7 @@ python3 scripts/window_probe.py --launch --verify
 
 ## 报告与通过判据
 
-完整验证写入 `.local-data/build/window-probe/window-probe-result.json`；单次按钮操作写入 `window-probe-manual-result.json`，不会覆盖完整验证的结论。报告包含运行模式、时间、授权状态、作用范围和检查结果，不包含个人应用或窗口信息。
+完整验证写入 `.local-data/build/window-probe/window-probe-result.json`；单次按钮操作写入 `window-probe-manual-result.json`，不会覆盖完整验证的结论。失败时保留此前的 PASS 和当前 FAIL，并说明未确认的状态。报告包含运行模式、时间、授权状态、作用范围和检查结果，不包含个人应用或窗口信息。
 
 整套通过必须同时满足：报告时间属于本次运行、`mode` 为 `verification`、`status` 为 `passed`、`accessibilityGranted` 为 `true`，并有 6 条 PASS。单次操作通过、旧报告或仅编译成功均不算整套通过。
 
@@ -62,8 +67,10 @@ python3 scripts/window_probe.py --launch --verify
 | 编译与签名 | `python3 scripts/window_probe.py --build --launch --verify`：两个应用编译、ad-hoc 签名与完整性校验通过 |
 | 真实 GUI | 控制器已启动，读取了辅助功能树并检查界面截图；首次运行的布局约束异常已修复并重新验证启动 |
 | 未授权路径 | 真实报告 `mode=verification`、`status=blocked_accessibility`、`accessibilityGranted=false`；界面显示等待授权 |
-| 已授权 6 项窗口检查 | 尚未执行，等待开发者确认授权 |
+| 已授权窗口检查 | 目前前 4 项通过：枚举、最小化 A 不影响 B、恢复并聚焦 A、切换至 B；第 5 项隐藏恢复状态尚未通过，第 6 项因前一步失败尚未执行 |
+| 失败复现与修复 | 复现了动画期间 AX -25204；补充有限重试、恢复状态确认、协调激活与主窗口选择后，前 4 项通过；无 GUI 读取干预的独立运行仍在第 5 项失败，完整验证报告保持 `failed` |
+| 确认逻辑回归 | `python3 scripts/window_probe.py --test`：7 项通过，覆盖临时错误恢复、状态延迟、权限拒绝、永久 AX 错误、重试耗尽、状态超时和失败上下文 |
 
-CI 仅编译两个原型并校验签名，不授予权限、不启动 GUI，也不替代本机窗口验证。
+CI 执行上述无 GUI 回归测试、编译两个原型并校验签名，不授予权限、不启动 GUI，也不替代本机窗口验证。
 
 未验证：权限撤销、应用卡顿、睡眠唤醒、多显示器、Space、全屏、其他应用兼容性及最低系统版本；尚未执行 AltTab 适配、窗口缩略图、MRU 或 Dock 输入序列验证。

@@ -27,8 +27,17 @@ struct ProbeResult {
     let checks: [String]
 }
 
+struct ProbeVerificationFailure: LocalizedError {
+    let completedChecks: [String]
+    let failedCheck: String
+    let underlying: Error
+
+    var errorDescription: String? { "\(failedCheck)：\(underlying.localizedDescription)" }
+}
+
 enum ProbeError: LocalizedError {
     case permissionRequired, targetGone, windowGone, unsupported, stateNotConfirmed
+    case stateNotConfirmedAt(String)
     case accessibility(String, Int32)
 
     var errorDescription: String? {
@@ -38,6 +47,7 @@ enum ProbeError: LocalizedError {
         case .windowGone: return "目标测试窗口已关闭，本次操作已停止。"
         case .unsupported: return "该测试窗口不支持所选操作。"
         case .stateNotConfirmed: return "系统尚未确认预期窗口状态，未将操作判定为成功。"
+        case .stateNotConfirmedAt(let state): return "系统尚未确认\(state)，未将操作判定为成功。"
         case .accessibility(let operation, let code): return "\(operation)失败（AX \(code)）。"
         }
     }
@@ -95,12 +105,20 @@ final class FixtureWindowService {
         try checked(AXUIElementSetAttributeValue(element, kAXMinimizedAttribute as CFString, minimized ? kCFBooleanTrue : kCFBooleanFalse), "修改最小化状态")
     }
 
-    private func waitFor(_ condition: () throws -> Bool) throws {
-        // Bounded post-action confirmation for the experiment; this is not a background window scanner.
-        for _ in 0..<10 {
-            if try condition() { return }
-            Thread.sleep(forTimeInterval: 0.08)
+    func waitFor(context: String? = nil, pause: () -> Void = { Thread.sleep(forTimeInterval: 0.08) }, _ condition: () throws -> Bool) throws {
+        // AppKit can temporarily reject AX reads during minimize/restore animations.
+        // Retry only that transport error, only inside bounded post-action confirmation.
+        for attempt in 0..<10 {
+            do {
+                if try condition() { return }
+            } catch let error as ProbeError {
+                guard case .accessibility(_, let code) = error,
+                      code == AXError.cannotComplete.rawValue,
+                      attempt < 9 else { throw error }
+            }
+            if attempt < 9 { pause() }
         }
+        if let context { throw ProbeError.stateNotConfirmedAt(context) }
         throw ProbeError.stateNotConfirmed
     }
 
@@ -113,18 +131,38 @@ final class FixtureWindowService {
         case .minimize, .restore:
             let minimized = action == .minimize
             try setMinimized(element, minimized)
-            try waitFor {
+            try waitFor(context: "最小化状态") {
                 let current = try self.resolve(target, id)
                 let state: Bool = try self.attribute(current, kAXMinimizedAttribute)
                 return state == minimized
             }
         case .focus:
             let minimized: Bool = try attribute(element, kAXMinimizedAttribute)
-            if minimized { try setMinimized(element, false) }
-            if target.application.isHidden { target.application.unhide() }
-            target.application.activate(options: [])
-            try checked(AXUIElementPerformAction(element, kAXRaiseAction as CFString), "聚焦测试窗口")
-            try waitFor {
+            if minimized {
+                try setMinimized(element, false)
+                try waitFor(context: "最小化窗口已展开") {
+                    let current = try self.resolve(target, id)
+                    let state: Bool = try self.attribute(current, kAXMinimizedAttribute)
+                    return !state
+                }
+            }
+            if target.application.isHidden {
+                target.application.unhide()
+                try waitFor(context: "应用已解除隐藏") { !target.application.isHidden }
+            }
+            DispatchQueue.main.sync {
+                if #available(macOS 14.0, *) {
+                    NSApp.yieldActivation(to: target.application)
+                    target.application.activate(from: .current, options: [])
+                } else {
+                    target.application.activate(options: [])
+                }
+            }
+            try waitFor(context: "目标应用激活与窗口焦点") {
+                // Raising is idempotent; re-resolve after restoration before retrying a busy target.
+                let current = try self.resolve(target, id)
+                try self.checked(AXUIElementSetAttributeValue(current, kAXMainAttribute as CFString, kCFBooleanTrue), "选择主测试窗口")
+                try self.checked(AXUIElementPerformAction(current, kAXRaiseAction as CFString), "聚焦测试窗口")
                 let app = try self.applicationElement(target)
                 let focused: AXUIElement = try self.attribute(app, kAXFocusedWindowAttribute)
                 let focusedID: String = try self.attribute(focused, kAXIdentifierAttribute)
@@ -139,29 +177,44 @@ final class FixtureWindowService {
     }
 
     func verify(_ target: FixtureTarget) throws -> ProbeResult {
-        let initial = try list(target)
-        guard initial.count == 2 else { throw ProbeError.unsupported }
+        var checks = [String]()
+        func check(_ description: String, _ operation: () throws -> Void) throws {
+            do {
+                try operation()
+                checks.append("PASS：\(description)")
+            } catch {
+                throw ProbeVerificationFailure(completedChecks: checks, failedCheck: description, underlying: error)
+            }
+        }
+        var initial = [FixtureWindow]()
+        try check("仅枚举到本会话的两个测试窗口") {
+            initial = try list(target)
+            guard initial.count == 2 else { throw ProbeError.unsupported }
+        }
         let first = initial[0].id
         let second = initial[1].id
-        var checks = ["PASS：仅枚举到本会话的两个测试窗口"]
-        _ = try perform(.minimize, target: target, id: first)
-        guard try list(target).first(where: { $0.id == second })?.minimized == false else { throw ProbeError.stateNotConfirmed }
-        checks.append("PASS：最小化 A，B 保持展开")
-        _ = try perform(.focus, target: target, id: first)
-        checks.append("PASS：恢复最小化窗口 A 并聚焦")
-        _ = try perform(.focus, target: target, id: second)
-        checks.append("PASS：切换到窗口 B")
-        try target.validate()
-        guard target.application.hide() else { throw ProbeError.stateNotConfirmed }
-        try waitFor { target.application.isHidden }
-        _ = try perform(.focus, target: target, id: first)
-        checks.append("PASS：恢复隐藏应用并聚焦窗口 A")
-        _ = try perform(.close, target: target, id: second)
-        do {
-            _ = try perform(.minimize, target: target, id: second)
-            throw ProbeError.stateNotConfirmed
-        } catch ProbeError.windowGone {
-            checks.append("PASS：已关闭窗口的旧选择被拒绝")
+        try check("最小化 A，B 保持展开") {
+            _ = try perform(.minimize, target: target, id: first)
+            guard try list(target).first(where: { $0.id == second })?.minimized == false else { throw ProbeError.stateNotConfirmed }
+        }
+        try check("恢复最小化窗口 A 并聚焦") {
+            _ = try perform(.focus, target: target, id: first)
+        }
+        try check("切换到窗口 B") {
+            _ = try perform(.focus, target: target, id: second)
+        }
+        try check("恢复隐藏应用并聚焦窗口 A") {
+            try target.validate()
+            guard target.application.hide() else { throw ProbeError.stateNotConfirmed }
+            try waitFor(context: "测试应用已隐藏") { target.application.isHidden }
+            _ = try perform(.focus, target: target, id: first)
+        }
+        try check("已关闭窗口的旧选择被拒绝") {
+            _ = try perform(.close, target: target, id: second)
+            do {
+                _ = try perform(.minimize, target: target, id: second)
+                throw ProbeError.stateNotConfirmed
+            } catch ProbeError.windowGone {}
         }
         return ProbeResult(windows: try list(target), checks: checks)
     }

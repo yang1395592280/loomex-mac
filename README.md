@@ -42,7 +42,7 @@ CLASSIC_LAUNCHPAD_SUPPORT_DIR="$PWD/.local-data/launch" \
   "dist/经典启动台.app/Contents/MacOS/ClassicLaunchpad"
 ```
 
-GitHub Actions 在 Apple Silicon macOS runner 上构建启动台和隔离窗口原型，并校验签名完整性；另一个 Ubuntu 任务执行上游验证脚本测试，并下载核对固定 AltTab 源码。需要图形会话的测试和真实 Dock 交互在本机验证。
+GitHub Actions 在 Apple Silicon macOS runner 上构建启动台和隔离窗口原型、校验签名，并执行无需 GUI 的窗口状态确认测试；另一个 Ubuntu 任务执行上游验证脚本测试，并下载核对固定 AltTab 源码。需要图形会话的测试和真实 Dock 交互在本机验证。
 
 ## 代码与文档
 

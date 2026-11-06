@@ -12,6 +12,17 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 OUTPUT = ROOT / ".local-data/build/window-probe"
 
 
+def test_confirmation():
+    OUTPUT.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix="confirmation-test-", dir=OUTPUT) as directory:
+        executable = pathlib.Path(directory) / "WindowProbeConfirmationTests"
+        subprocess.run(["xcrun", "swiftc", "-swift-version", "5", "-parse-as-library",
+                        "-target", "arm64-apple-macos13.0",
+                        str(ROOT / "Prototypes/WindowProbe/Controller/FixtureWindowService.swift"),
+                        str(ROOT / "Tests/window_probe_confirmation.swift"), "-o", str(executable)], check=True)
+        subprocess.run([str(executable)], check=True)
+
+
 def build():
     OUTPUT.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="window-probe-", dir=OUTPUT) as directory:
@@ -50,10 +61,13 @@ def build():
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--build", action="store_true")
+    parser.add_argument("--test", action="store_true", help="Test bounded AX state confirmation without GUI or permissions")
     parser.add_argument("--launch", action="store_true")
     parser.add_argument("--verify", action="store_true", help="Create owned fixture windows and run the permission-gated checks")
     args = parser.parse_args()
-    if args.build or not (args.launch or args.verify):
+    if args.test:
+        test_confirmation()
+    if args.build or not (args.launch or args.verify or args.test):
         build()
     if args.launch or args.verify:
         bundle = OUTPUT / "Loomex Window Probe.app"

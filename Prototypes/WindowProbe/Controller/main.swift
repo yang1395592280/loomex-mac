@@ -120,11 +120,14 @@ final class ProbeDelegate: NSObject, NSApplicationDelegate {
                     self.saveReport(mode: mode, status: "passed", checks: report.checks)
                 case .failure(let error):
                     self.status.stringValue = error.localizedDescription
-                    self.details.string = error.localizedDescription
+                    let verification = error as? ProbeVerificationFailure
+                    let checks = (verification?.completedChecks ?? []) + ["FAIL：\(error.localizedDescription)"]
+                    self.details.string = checks.joined(separator: "\n")
+                    let underlying = verification?.underlying ?? error
                     let state: String
-                    if let failure = error as? ProbeError, case .permissionRequired = failure { state = "blocked_accessibility" }
+                    if let failure = underlying as? ProbeError, case .permissionRequired = failure { state = "blocked_accessibility" }
                     else { state = "failed" }
-                    self.saveReport(mode: mode, status: state, checks: [error.localizedDescription])
+                    self.saveReport(mode: mode, status: state, checks: checks)
                 }
             }
         }
