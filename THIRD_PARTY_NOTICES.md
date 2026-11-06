@@ -12,7 +12,7 @@ ClassicLaunchpad 原版说明保存在 docs/classic-launchpad.md。原说明中�
 
 | 项目 | 调研时许可证 | 计划用途 | 当前状态 |
 | --- | --- | --- | --- |
-| [AltTab](https://github.com/lwouis/alt-tab-macos) | GPL-3.0 | 窗口切换基础 | v11.10.1 已锁定为构建验证候选，尚未整合 |
+| [AltTab](https://github.com/lwouis/alt-tab-macos) | GPL-3.0 | 窗口切换基础 | v11.10.1 已通过本机构建与签名验证，尚未整合 |
 | [DockMinimize](https://github.com/oidd/DockMinimize) | MIT | Dock 点击行为参考 | 尚未导入 |
 | [DockTamer](https://github.com/fdamianenriquez/DockTamer) | MIT | 轻量 Dock 行为备选 | 尚未导入 |
 | [DockDoor](https://github.com/ejbills/DockDoor) | GPL-3.0 | 完整窗口及 Dock 交互参考 | 尚未导入 |

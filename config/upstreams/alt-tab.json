@@ -5,7 +5,7 @@
   "commit": "c500294bdb01186011a5c64a412b04cef9931bef",
   "project": "alt-tab-macos.xcodeproj",
   "license": "GPL-3.0",
-  "integrationStatus": "source-verification-candidate; not integrated; build pending full Xcode",
+  "integrationStatus": "build-verified candidate on Xcode 27.2 / macOS 27.0 / arm64; not integrated",
   "dependencies": [
     {
       "name": "ShortcutRecorder",

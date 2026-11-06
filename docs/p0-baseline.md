@@ -1,22 +1,22 @@
 # P0：工具链与 AltTab 构建基线
 
-日期：2026-11-07。用户已认可架构与需求方案。本记录对应 [开发方案](requirements-and-development.md) 的 T0.1；当前为部分完成，AltTab 完整构建尚待 Xcode。
+日期：2026-11-07。用户已认可架构与需求方案。本记录对应 [开发方案](requirements-and-development.md) 的 T0.1；原启动台与固定 AltTab 的本机构建门禁已通过，组合应用及窗口行为尚未验证。
 
 ## 当前证据
 
 | 项目 | 结果 |
 | --- | --- |
-| 原启动台回归 | `python3 build.py --test --output dist-p0`：59 passed，0 failed |
-| 原启动台制品 | `dist-p0/经典启动台.app` 已构建，脚本内 ad-hoc 签名完整性校验通过 |
+| 原启动台回归 | `python3 build.py --test --output dist-p0-xcode`：新工具链下 59 passed，0 failed |
+| 原启动台制品 | `dist-p0-xcode/经典启动台.app` 已构建，脚本内 ad-hoc 签名完整性校验通过 |
 | 主机 | Apple Silicon / macOS 27.0（26A428） |
-| 当前命令行工具链 | Swift 6.0.3，选中 `/Library/Developer/CommandLineTools` |
-| 完整 Xcode | Spotlight 与常用应用目录未找到；`xcodebuild -version` 要求完整 Xcode；用户选择从 App Store 安装 |
+| 当前命令行工具链 | Swift 6.4.2，SDK 27.2；选中 `/Applications/Xcode.app/Contents/Developer` |
+| 完整 Xcode | 用户已安装并完成准备；Xcode 27.2（27B52） |
 | AltTab 源码 | v11.10.1，`c500294bdb01186011a5c64a412b04cef9931bef`，与官方 tag 对应 |
 | 源码校验与保护 | 固定提交及 11 份文件校验通过；验证脚本的 8 项行为测试通过 |
 | PLCrashReporter 二进制 | macOS 切片版本为 1.11.1；与 Microsoft 官方 XCFramework 发行包中的同名二进制 SHA-256 一致，值已写入锁定文件 |
-| AltTab 构建与运行 | 尚未通过；未启动上游应用，未请求或改变系统授权 |
+| AltTab 构建与运行 | `python3 scripts/alt_tab_baseline.py --build`：Debug / arm64 构建与 `codesign --verify --deep --strict` 通过；未启动完整上游应用 |
 
-源码下载不等于可采用的整合基线；只有对应 Xcode 下构建与签名验证通过后，才更新为“构建已验证”。本轮启动台测试不代表 AltTab、Dock 或组合应用已经可用。
+该固定版本现为“构建已验证”的整合候选。验证范围限于本机系统、工具链和架构；启动台测试和 AltTab 编译通过不代表 AltTab 窗口控制、Dock 或组合应用已经可用。
 
 ## 固定来源与依赖
 
@@ -62,14 +62,14 @@ GitHub Actions 增加独立 Ubuntu 任务，运行上述 Python 测试并从干�
 
 ## 上游构建边界
 
-该版本使用 Xcode 工程和 vendor 下的三个本地 Swift Package，无远程 SPM 包解析。源码配置为 Swift 5.8、macOS 12 部署目标；上游 CI 选择 Xcode 27.1。本机安装后记录实际 Xcode、SDK 和构建结果，不能用当前 CLT 版本替代证明兼容。
+该版本使用 Xcode 工程和 vendor 下的三个本地 Swift Package，无远程 SPM 包解析。源码配置为 Swift 5.8、macOS 12 部署目标；上游 CI 选择 Xcode 27.1。本机已在 Xcode 27.2 / SDK 27.2 下构建成功；最低目标与其他系统的运行兼容性仍未验证。
 
 唯一工程 shell build phase 为 Copy Sparkle Helpers：它修改生成的框架资源并重新签名。验证入口对 Debug 构建覆盖为 ad-hoc 身份，避免使用上游开发者证书；构建完成仍不自动启动 AltTab。许可、激活、反馈、更新和崩溃服务在后续 Loomex 适配时分离，不通过运行完整上游应用来验证窗口行为。
 
 ## T0.1 退出条件与后续
 
-- 已通过：原启动台测试、构建与签名；官方 tag 对应提交已取得；源码锁定与本地变更保护入口已建立；依赖版本与许可入口已记录，PLCrashReporter macOS 二进制与官方发行包一致。
-- 仍需通过：完整 Xcode 下 AltTab 构建和签名校验、依赖许可与二进制来源复核；该版本单元测试可按上游 Test scheme 另行执行并记录。
-- T0.1 完成后：T0.2 以 Loomex 身份建立受控窗口样本，验证枚举、聚焦、最小化/恢复和拒绝授权路径；随后进入 Dock 输入序列原型。
+- 已通过：新 Xcode 下原启动台 59 项测试、构建与签名；固定 AltTab 构建与签名；源码锁定和本地变更保护；依赖版本与许可入口清单；PLCrashReporter macOS 二进制与官方发行包一致。
+- 整合前仍需完成：实际复用范围的完整许可收集、其他上游二进制来源和依赖漏洞复核。上游 Test scheme 单元测试本轮未执行。
+- 下一步：T0.2 以 Loomex 身份建立受控窗口样本，验证枚举、聚焦、最小化/恢复和拒绝授权路径；随后进入 Dock 输入序列原型。
 
 在上述原型门禁通过前，保持当前启动台入口与布局格式，暂不大规模抽离 AltTab 源码。
