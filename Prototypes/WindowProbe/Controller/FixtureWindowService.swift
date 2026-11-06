@@ -105,6 +105,19 @@ final class FixtureWindowService {
         try checked(AXUIElementSetAttributeValue(element, kAXMinimizedAttribute as CFString, minimized ? kCFBooleanTrue : kCFBooleanFalse), "修改最小化状态")
     }
 
+    private func setHidden(_ hidden: Bool, target: FixtureTarget) throws {
+        let application = try applicationElement(target)
+        var writable: DarwinBoolean = false
+        try checked(AXUIElementIsAttributeSettable(application, kAXHiddenAttribute as CFString, &writable), "检查隐藏能力")
+        guard writable.boolValue else { throw ProbeError.unsupported }
+        try checked(AXUIElementSetAttributeValue(application, kAXHiddenAttribute as CFString, hidden ? kCFBooleanTrue : kCFBooleanFalse), "修改测试应用隐藏状态")
+        try waitFor(context: hidden ? "测试应用已隐藏" : "应用已解除隐藏") {
+            let current = try self.applicationElement(target)
+            let state: Bool = try self.attribute(current, kAXHiddenAttribute)
+            return state == hidden && target.application.isHidden == hidden
+        }
+    }
+
     func waitFor(context: String? = nil, pause: () -> Void = { Thread.sleep(forTimeInterval: 0.08) }, _ condition: () throws -> Bool) throws {
         // AppKit can temporarily reject AX reads during minimize/restore animations.
         // Retry only that transport error, only inside bounded post-action confirmation.
@@ -146,10 +159,8 @@ final class FixtureWindowService {
                     return !state
                 }
             }
-            if target.application.isHidden {
-                target.application.unhide()
-                try waitFor(context: "应用已解除隐藏") { !target.application.isHidden }
-            }
+            let hidden: Bool = try attribute(applicationElement(target), kAXHiddenAttribute)
+            if hidden { try setHidden(false, target: target) }
             DispatchQueue.main.sync {
                 if #available(macOS 14.0, *) {
                     NSApp.yieldActivation(to: target.application)
@@ -204,9 +215,7 @@ final class FixtureWindowService {
             _ = try perform(.focus, target: target, id: second)
         }
         try check("恢复隐藏应用并聚焦窗口 A") {
-            try target.validate()
-            guard target.application.hide() else { throw ProbeError.stateNotConfirmed }
-            try waitFor(context: "测试应用已隐藏") { target.application.isHidden }
+            try setHidden(true, target: target)
             _ = try perform(.focus, target: target, id: first)
         }
         try check("已关闭窗口的旧选择被拒绝") {
