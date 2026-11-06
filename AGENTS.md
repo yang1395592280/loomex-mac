@@ -22,7 +22,7 @@
 python3 build.py --test --output dist
 ```
 
-- 当前测试需要 Apple Silicon Mac 和可用的图形会话；GitHub Actions 仅执行构建。
+- 当前 59 项 Swift 测试需要 Apple Silicon Mac 和可用的图形会话；GitHub Actions 的 macOS 任务执行构建，Ubuntu 任务验证固定上游源码和 Python 验证脚本测试。
 - GUI 行为改变时进行真实交互验证，编译通过不能代替交互通过。
 - 报告实际执行的命令和结果；未测的系统版本、多屏及权限行为明确标注。
 

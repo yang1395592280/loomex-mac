@@ -32,4 +32,4 @@ python3 build.py --test --output dist
 
 ## 生成物和配置
 
-构建产物、个人配置、签名证书、Token、布局及临时日志不进入版本管理。GitHub Actions 当前只验证构建；有图形会话要求的测试在本机运行并报告结果。
+构建产物、个人配置、签名证书、Token、布局及临时日志不进入版本管理。GitHub Actions 验证 macOS 构建、上游锁定源码和 Python 验证脚本测试；有图形会话要求的测试在本机运行并报告结果。P0 验证方式见 [构建基线](docs/p0-baseline.md)。
