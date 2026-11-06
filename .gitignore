@@ -1,0 +1,33 @@
+# macOS / editors
+.DS_Store
+._*
+*.swp
+*.xcuserstate
+xcuserdata/
+
+# Build and packaging output
+/dist/
+/dist-*/
+/build/
+/.build/
+/DerivedData/
+/outputs/
+*.app/
+*.dmg
+*.zip
+__pycache__/
+*.py[cod]
+
+# Local layouts, diagnostics and experiments
+/.local-data/
+/test-output/
+/backups/
+*.log
+
+# Local configuration and signing credentials
+.env
+.env.*
+!.env.example
+*.p12
+*.p8
+*.mobileprovision
