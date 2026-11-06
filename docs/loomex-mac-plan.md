@@ -1,6 +1,8 @@
 # Loomex Flow 产品与技术规划
 
-日期：2026-11-07。状态：规划草案，尚未开始代码整合。
+日期：2026-11-07。状态：初期规划留存，尚未开始代码整合。
+
+当前细化方案见 [技术选型与整体架构](technical-architecture.md) 和 [整体需求与开发方案](requirements-and-development.md)。本文件保留初期构想与调研过程；技术边界、需求默认值和验收口径以细化方案为准。
 
 用户已确定：将 ClassicLaunchpad、基于 AltTab 的窗口切换、Dock 点击隐藏或最小化能力整合为一个 Loomex 品牌工具；整套开源，可接受 GPL。
 
