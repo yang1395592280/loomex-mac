@@ -51,7 +51,9 @@ GitHub Actions 在 Apple Silicon macOS runner 上执行构建及脚本内的签�
 | `Sources/` | 当前经典启动台的 Swift / AppKit 实现 |
 | `Tests/main.swift` | 现有回归测试 |
 | `build.py` / `make_icon.swift` | 编译、图标生成及本地签名 |
-| [产品与技术规划](docs/loomex-mac-plan.md) | 架构、选型、权限、迁移、版本路线和验收条件 |
+| [技术选型与整体架构](docs/technical-architecture.md) | 原生技术栈、候选比较、模块依赖、系统 API、线程、权限与工程迁移 |
+| [整体需求与开发方案](docs/requirements-and-development.md) | 功能规格、默认行为、任务拆解、性能预算与验收矩阵 |
+| [初期产品规划](docs/loomex-mac-plan.md) | 初期构想及开源项目调研，细化方案以以上两份文档为准 |
 | [经典启动台原版说明](docs/classic-launchpad.md) | 迁入前 1.0.6 使用说明，作为历史基线保留 |
 | [开发贡献说明](CONTRIBUTING.md) | 分支、提交和验证方式 |
 | [上游与许可说明](THIRD_PARTY_NOTICES.md) | 已导入代码及计划参考项目的边界 |
