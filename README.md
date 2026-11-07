@@ -42,7 +42,7 @@ CLASSIC_LAUNCHPAD_SUPPORT_DIR="$PWD/.local-data/launch" \
   "dist/经典启动台.app/Contents/MacOS/ClassicLaunchpad"
 ```
 
-GitHub Actions 在 Apple Silicon macOS runner 上构建启动台、隔离窗口原型和默认只观察的 Dock 原型，校验签名，并执行无需 GUI 的窗口状态确认与 Dock 点击策略测试；另一个 Ubuntu 任务执行上游验证脚本测试，并下载核对固定 AltTab 源码。需要图形会话的测试和真实 Dock 交互在本机验证。
+GitHub Actions 在 Apple Silicon macOS runner 上构建启动台、隔离窗口原型、默认只观察的 Dock 原型及自建窗口预览原型，校验签名，并执行无需 GUI 的窗口状态、Dock 点击策略和预览生命周期测试；另一个 Ubuntu 任务执行上游验证脚本测试，并下载核对固定 AltTab 源码。需要图形会话或系统授权的行为在本机验证。
 
 ## 代码与文档
 
@@ -57,6 +57,7 @@ GitHub Actions 在 Apple Silicon macOS runner 上构建启动台、隔离窗口�
 | [P0 窗口原型](docs/p0-window-probe.md) | 自建窗口的控制实验、辅助功能授权与实际验证边界 |
 | [P0 Dock 原型](docs/p0-dock-input.md) | 默认观察自身 Dock 图标；可选自建窗口隐藏、最小化与定向恢复实验，尚非产品功能 |
 | [P0 Dock 监听生命周期](docs/p0-dock-lifecycle.md) | 会话隔离、环境失效暂停与真实监听启停验证 |
+| [P0 自建窗口预览](docs/p0-preview-probe.md) | 单次截图、图标降级、容量限制及捕获生命周期验证 |
 | [初期产品规划](docs/loomex-mac-plan.md) | 初期构想及开源项目调研，细化方案以以上两份文档为准 |
 | [经典启动台原版说明](docs/classic-launchpad.md) | 迁入前 1.0.6 使用说明，作为历史基线保留 |
 | [开发贡献说明](CONTRIBUTING.md) | 分支、提交和验证方式 |
