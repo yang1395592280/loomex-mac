@@ -56,6 +56,7 @@ GitHub Actions 在 Apple Silicon macOS runner 上构建启动台、隔离窗口�
 | [P0 构建基线](docs/p0-baseline.md) | AltTab 固定版本、依赖核对、验证命令与当前工具链状态 |
 | [P0 窗口原型](docs/p0-window-probe.md) | 自建窗口的控制实验、辅助功能授权与实际验证边界 |
 | [P0 Dock 原型](docs/p0-dock-input.md) | 默认观察自身 Dock 图标；可选自建窗口隐藏、最小化与定向恢复实验，尚非产品功能 |
+| [P0 Dock 监听生命周期](docs/p0-dock-lifecycle.md) | 会话隔离、环境失效暂停与真实监听启停验证 |
 | [初期产品规划](docs/loomex-mac-plan.md) | 初期构想及开源项目调研，细化方案以以上两份文档为准 |
 | [经典启动台原版说明](docs/classic-launchpad.md) | 迁入前 1.0.6 使用说明，作为历史基线保留 |
 | [开发贡献说明](CONTRIBUTING.md) | 分支、提交和验证方式 |

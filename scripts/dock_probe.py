@@ -27,6 +27,11 @@ def test_policy():
         compile_swift([ROOT / "Prototypes/DockProbe/DockClickPolicy.swift",
                        ROOT / "Tests/dock_click_policy.swift"], executable, library=True)
         subprocess.run([str(executable)], check=True)
+        session_tests = pathlib.Path(directory) / "DockObservationSessionTests"
+        compile_swift([ROOT / "Prototypes/DockProbe/DockClickPolicy.swift",
+                       ROOT / "Prototypes/DockProbe/DockObservationSession.swift",
+                       ROOT / "Tests/dock_observation_session.swift"], session_tests, library=True)
+        subprocess.run([str(session_tests)], check=True)
 
 
 def build():
