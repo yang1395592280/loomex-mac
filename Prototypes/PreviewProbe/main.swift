@@ -81,11 +81,18 @@ final class PreviewProbeDelegate: NSObject, NSApplicationDelegate, NSWindowDeleg
         item.submenu = app
         menu.addItem(item)
         app.addItem(withTitle: "显示控制面板", action: #selector(showControl), keyEquivalent: "1").target = self
+        app.addItem(withTitle: "显示样本窗口", action: #selector(showSample), keyEquivalent: "2").target = self
+        app.addItem(.separator())
+        app.addItem(withTitle: "隐藏本原型", action: #selector(NSApplication.hide(_:)), keyEquivalent: "h")
         app.addItem(withTitle: "退出", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         NSApp.mainMenu = menu
     }
 
-    @objc private func showControl() { control.makeKeyAndOrderFront(nil) }
+    @objc private func showControl() {
+        NSApp.unhide(nil)
+        control.makeKeyAndOrderFront(nil)
+        refresh()
+    }
 
     @objc private func showSample() {
         if sample == nil {
@@ -179,6 +186,9 @@ final class PreviewProbeDelegate: NSObject, NSApplicationDelegate, NSWindowDeleg
             "inFlightCount": capture.state.inFlight == nil ? 0 : 1, "requestCount": capture.requestCount,
             "completedCount": capture.completedCount, "selectionCount": selectionCount,
             "sampleVisible": sample?.isVisible ?? false, "sampleKey": sample?.isKeyWindow ?? false,
+            "sampleExists": sample != nil, "sampleMiniaturized": sample?.isMiniaturized ?? false,
+            "applicationHidden": NSApp.isHidden, "applicationActive": NSApp.isActive,
+            "displayImagePresent": imageView.image != nil,
             "imageWidth": capture.image?.width ?? 0, "imageHeight": capture.image?.height ?? 0,
             "timestamp": ISO8601DateFormatter().string(from: Date())]
         let url = Bundle.main.bundleURL.deletingLastPathComponent().appendingPathComponent("preview-probe-result.json")
@@ -198,6 +208,8 @@ final class PreviewProbeDelegate: NSObject, NSApplicationDelegate, NSWindowDeleg
     }
 
     func applicationDidHide(_ notification: Notification) { hidePanel() }
+    // A dismissed switcher must not retain a thumbnail while another application is active.
+    func applicationDidResignActive(_ notification: Notification) { hidePanel() }
     func applicationWillTerminate(_ notification: Notification) {
         hidePanel()
         observers.forEach { NSWorkspace.shared.notificationCenter.removeObserver($0) }
