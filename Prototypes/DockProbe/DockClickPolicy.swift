@@ -7,7 +7,7 @@ enum DockHit: Equatable {
 }
 
 enum DockDecision: String {
-    case pending, wouldHide, background, noWindows, nonTarget
+    case pending, wouldHide, pendingRestore, wouldRestore, background, noWindows, nonTarget
     case modifiers, drag, longPress, rapidClick, uncertain, interrupted
 }
 
@@ -28,6 +28,7 @@ struct DockGesture {
     let dragged: Bool
     let distance: Double
     let clickCount: Int
+    var hasOwnedRecovery = false
 }
 
 // This experiment decides what it would do; it never consumes input or controls a window.
@@ -36,6 +37,7 @@ struct DockClickPolicy {
     private var sequence = 0
     private var lastDown: TimeInterval?
     private var deadline: TimeInterval?
+    private var settledDecision = DockDecision.wouldHide
 
     init(doubleClickInterval: TimeInterval) {
         self.doubleClickInterval = doubleClickInterval
@@ -61,16 +63,17 @@ struct DockClickPolicy {
         guard duration >= 0 && duration <= 0.5 else { return .longPress }
         guard !gesture.press.rapid && gesture.clickCount == 1 else { return .rapidClick }
         guard gesture.ordinaryWindowsBefore > 0 else { return .noWindows }
-        guard gesture.foregroundBefore else { return .background }
+        guard gesture.foregroundBefore || gesture.hasOwnedRecovery else { return .background }
         // Wait after mouse-up so a second down can cancel the entire click burst.
         deadline = gesture.upTime + doubleClickInterval
-        return .pending
+        settledDecision = gesture.hasOwnedRecovery ? .wouldRestore : .wouldHide
+        return gesture.hasOwnedRecovery ? .pendingRestore : .pending
     }
 
     mutating func settle(at time: TimeInterval, for press: DockPress) -> DockDecision? {
         guard press.sequence == sequence, let deadline, time >= deadline else { return nil }
         self.deadline = nil
-        return .wouldHide
+        return settledDecision
     }
 
     mutating func cancel() {

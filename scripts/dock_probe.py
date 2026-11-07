@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build the isolated, observation-only Dock input experiment and its policy tests."""
+"""Build the isolated Dock experiment (observation by default) and its policy tests."""
 import argparse
 import json
 import pathlib

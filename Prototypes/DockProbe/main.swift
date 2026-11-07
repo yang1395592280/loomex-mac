@@ -13,13 +13,19 @@ private struct CapturedPress {
     let ordinaryWindowsBefore: Int
     let clickCount: Int
     let work: HitWork
+    let actionContext: OwnedDockContext
     var hadModifiers: Bool
     var dragged = false
     var distance = 0.0
 }
 
-final class DockProbeDelegate: NSObject, NSApplicationDelegate {
+final class DockProbeDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private var window: NSWindow?
+    private var sampleWindow: NSWindow?
+    private let actions = OwnedWindowActions()
+    private let verifier = OwnedActionVerification()
+    private let modePicker = NSPopUpButton()
+    private var mode = OwnedDockMode.observe
     private let status = NSTextField(labelWithString: "尚未开始观察")
     private let details = NSTextView()
     private let queue = DispatchQueue(label: "com.loomex.flow.p0.dock-hit", qos: .userInitiated)
@@ -42,20 +48,27 @@ final class DockProbeDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func showWindow() {
-        if let window { window.makeKeyAndOrderFront(nil); return }
-        let panel = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 780, height: 490),
+        if let window {
+            actions.register(window)
+            window.deminiaturize(nil)
+            window.makeKeyAndOrderFront(nil)
+            return
+        }
+        let panel = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 860, height: 560),
                              styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
         panel.title = "Loomex Dock Input Probe"
+        panel.tabbingMode = .disallowed
         panel.isReleasedWhenClosed = false
+        panel.delegate = self
         let stack = NSStackView()
         stack.orientation = .vertical
         stack.alignment = .leading
         stack.spacing = 12
         stack.translatesAutoresizingMaskIntoConstraints = false
-        let heading = NSTextField(labelWithString: "Dock 输入实验 · 只观察")
+        let heading = NSTextField(labelWithString: "Dock 输入与自建窗口动作实验")
         heading.font = .boldSystemFont(ofSize: 20)
         stack.addArrangedSubview(heading)
-        let explanation = NSTextField(wrappingLabelWithString: "仅记录本实验应用的 Dock 图标。所有点击、右键和拖拽仍由系统处理，不会隐藏或最小化任何应用。开始后可点击本应用图标，比较点击前状态与判定。")
+        let explanation = NSTextField(wrappingLabelWithString: "默认只观察自身 Dock 图标。选择动作模式后，仅操作本原型的 A/B 窗口；恢复只处理本次收起记录。所有输入仍放行，其他应用不参与实验。")
         stack.addArrangedSubview(explanation)
         stack.addArrangedSubview(status)
         let buttons = NSStackView()
@@ -66,6 +79,15 @@ final class DockProbeDelegate: NSObject, NSApplicationDelegate {
             buttons.addArrangedSubview(NSButton(title: title, target: self, action: action))
         }
         stack.addArrangedSubview(buttons)
+        let actionButtons = NSStackView()
+        actionButtons.spacing = 8
+        modePicker.addItems(withTitles: OwnedDockMode.allCases.map(\.title))
+        modePicker.target = self
+        modePicker.action = #selector(changeMode)
+        actionButtons.addArrangedSubview(modePicker)
+        actionButtons.addArrangedSubview(NSButton(title: "打开测试窗口 B", target: self, action: #selector(showSample)))
+        actionButtons.addArrangedSubview(NSButton(title: "运行本地动作验证", target: self, action: #selector(verifyActions)))
+        stack.addArrangedSubview(actionButtons)
         details.isEditable = false
         details.font = .monospacedSystemFont(ofSize: 12, weight: .regular)
         let scroll = NSScrollView()
@@ -85,6 +107,7 @@ final class DockProbeDelegate: NSObject, NSApplicationDelegate {
             ])
         }
         window = panel
+        actions.register(panel)
         render()
         panel.center()
         panel.makeKeyAndOrderFront(nil)
@@ -92,6 +115,7 @@ final class DockProbeDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc private func start() {
+        cancelVerification()
         stopObservation(state: "idle")
         guard AXIsProcessTrusted() else {
             reportState = "blocked_accessibility"
@@ -122,7 +146,7 @@ final class DockProbeDelegate: NSObject, NSApplicationDelegate {
         CGEvent.tapEnable(tap: newTap, enable: true)
         observing = true
         reportState = "observing"
-        status.stringValue = "正在只读观察自身 Dock 图标；单击等待 \(String(format: "%.2f", NSEvent.doubleClickInterval)) 秒确认。"
+        status.stringValue = "已启用：\(mode.title)；单击等待 \(String(format: "%.2f", NSEvent.doubleClickInterval)) 秒确认。"
         permissionTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
             guard let self else { return }
             if !AXIsProcessTrusted() { self.stopObservation(state: "permission_lost") }
@@ -152,14 +176,15 @@ final class DockProbeDelegate: NSObject, NSApplicationDelegate {
         if type == .leftMouseDown {
             primaryPressCount += 1
             let press = policy.begin(at: time)
-            guard activeSequence == nil else { capture = nil; return }
+            guard activeSequence == nil, !actions.isBusy else { capture = nil; return }
             activeSequence = press.sequence
             let point = event.location
             let work = HitWork()
             capture = CapturedPress(press: press, point: point,
                 foregroundBefore: NSWorkspace.shared.frontmostApplication?.processIdentifier == ProcessInfo.processInfo.processIdentifier,
-                ordinaryWindowsBefore: NSApp.windows.filter { $0.isVisible || $0.isMiniaturized }.count,
-                clickCount: Int(event.getIntegerValueField(.mouseEventClickState)), work: work, hadModifiers: modified)
+                ordinaryWindowsBefore: actions.windowCount,
+                clickCount: Int(event.getIntegerValueField(.mouseEventClickState)), work: work,
+                actionContext: actions.snapshot(mode: mode), hadModifiers: modified)
             queue.async { work.downHit = self.hit(at: point) }
             DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
                 guard self.activeSequence == press.sequence else { return }
@@ -184,27 +209,38 @@ final class DockProbeDelegate: NSObject, NSApplicationDelegate {
             queue.async {
                 let down = completed.work.downHit
                 let up = self.hit(at: point)
-                let gesture = DockGesture(press: completed.press, upTime: time, downHit: down, upHit: up,
+                var gesture = DockGesture(press: completed.press, upTime: time, downHit: down, upHit: up,
                     foregroundBefore: completed.foregroundBefore, ordinaryWindowsBefore: completed.ordinaryWindowsBefore,
                     hadModifiers: completed.hadModifiers, dragged: completed.dragged,
                     distance: completed.distance, clickCount: completed.clickCount)
+                gesture.hasOwnedRecovery = completed.actionContext.recovery != nil
+                let finishedGesture = gesture
                 DispatchQueue.main.async {
                     guard self.activeSequence == completed.press.sequence else { return }
                     self.activeSequence = nil
                     guard self.observing else { return }
                     guard AXIsProcessTrusted() else { self.stopObservation(state: "permission_lost"); return }
                     if down == .unavailable || up == .unavailable { self.unavailableHitCount += 1 }
-                    let result = self.policy.finish(gesture)
-                    if case .fixture = down { self.record(result, gesture: gesture) }
-                    if result == .pending {
+                    let result = self.policy.finish(finishedGesture)
+                    if case .fixture = down { self.record(result, gesture: finishedGesture) }
+                    if result == .pending || result == .pendingRestore {
                         DispatchQueue.main.asyncAfter(deadline: .now() + NSEvent.doubleClickInterval) {
                             guard self.observing, AXIsProcessTrusted() else { return }
-                            guard NSApp.isActive, NSApp.windows.contains(where: { $0.isVisible || $0.isMiniaturized }) else {
+                            guard NSApp.isActive, self.actions.windowCount > 0,
+                                  self.mode == completed.actionContext.mode else {
                                 self.policy.cancel()
                                 return
                             }
-                            guard let result = self.policy.settle(at: ProcessInfo.processInfo.systemUptime, for: gesture.press) else { return }
-                            self.record(result, gesture: gesture)
+                            guard let result = self.policy.settle(at: ProcessInfo.processInfo.systemUptime, for: finishedGesture.press) else { return }
+                            self.record(result, gesture: finishedGesture)
+                            guard self.mode != .observe else { return }
+                            self.actions.perform(completed.actionContext, restoring: result == .wouldRestore) { outcome in
+                                guard self.observing else { return }
+                                switch outcome {
+                                case .success(let message): self.recordAction(message, succeeded: true)
+                                case .failure(let error): self.recordAction(error.localizedDescription, succeeded: false)
+                                }
+                            }
                         }
                     }
                 }
@@ -240,17 +276,30 @@ final class DockProbeDelegate: NSObject, NSApplicationDelegate {
         observations.append(["decision": decision.rawValue, "foregroundBefore": gesture.foregroundBefore,
             "ordinaryWindowsBefore": gesture.ordinaryWindowsBefore, "dragged": gesture.dragged,
             "modified": gesture.hadModifiers, "clickCount": gesture.clickCount,
+            "mode": mode.rawValue, "hasOwnedRecovery": gesture.hasOwnedRecovery,
+            "distancePoints": gesture.distance, "durationSeconds": gesture.upTime - gesture.press.time,
             "timestamp": ISO8601DateFormatter().string(from: Date())])
         if observations.count > 40 { observations.removeFirst(observations.count - 40) }
         render()
         saveReport()
     }
 
+    private func recordAction(_ message: String, succeeded: Bool) {
+        observations.append(["action": message, "succeeded": succeeded, "mode": mode.rawValue,
+            "ownedWindows": ownedWindowStates(),
+            "timestamp": ISO8601DateFormatter().string(from: Date())])
+        if observations.count > 40 { observations.removeFirst(observations.count - 40) }
+        status.stringValue = message
+        render()
+        saveReport()
+    }
+
     private func render() {
         details.string = observations.map {
-            "\($0["decision"] ?? "") | 点击前前台=\($0["foregroundBefore"] ?? false) 窗口=\($0["ordinaryWindowsBefore"] ?? 0) 拖动=\($0["dragged"] ?? false) 修饰键=\($0["modified"] ?? false)"
+            if let action = $0["action"] { return "动作：\(action) | 成功=\($0["succeeded"] ?? false)" }
+            return "\($0["decision"] ?? "") | 点击前前台=\($0["foregroundBefore"] ?? false) 窗口=\($0["ordinaryWindowsBefore"] ?? 0) 拖动=\($0["dragged"] ?? false) 修饰键=\($0["modified"] ?? false)"
         }.joined(separator: "\n")
-        if observations.isEmpty { details.string = "判定仅供实验，不执行收起动作。自身图标在正式产品中固定排除。\n无窗口场景：点击上方按钮关闭实验窗口，再点击 Dock 图标观察系统重新打开。" }
+        if observations.isEmpty { details.string = "默认只观察；动作模式仅供自建样本实验。自身图标在正式产品中固定排除。\n本地动作验证会暂停 Dock 监听，检查隐藏、最小化、定向恢复与过期窗口拒绝。" }
     }
 
     private func saveReport() {
@@ -258,6 +307,8 @@ final class DockProbeDelegate: NSObject, NSApplicationDelegate {
         let report: [String: Any] = ["status": reportState, "scope": "owned-probe-only", "eventTapMode": "listenOnly",
             "accessibilityGranted": AXIsProcessTrusted(), "listenEventAccess": CGPreflightListenEventAccess(),
             "eventTapInstalled": tap != nil, "primaryPressCount": primaryPressCount,
+            "mode": mode.rawValue, "registeredWindowCount": actions.windowCount,
+            "ownedWindows": ownedWindowStates(),
             "unavailableHitCount": unavailableHitCount,
             "observations": observations, "doubleClickInterval": NSEvent.doubleClickInterval,
             "timestamp": ISO8601DateFormatter().string(from: Date())]
@@ -266,9 +317,21 @@ final class DockProbeDelegate: NSObject, NSApplicationDelegate {
         } catch { status.stringValue = "本地实验报告保存失败：\(error.localizedDescription)" }
     }
 
+    private func ownedWindowStates() -> [String: Any] {
+        var states = [String: Any]()
+        for (name, candidate) in [("A", window), ("B", sampleWindow)] {
+            if let candidate {
+                states[name] = ["visible": candidate.isVisible, "miniaturized": candidate.isMiniaturized,
+                                "key": candidate.isKeyWindow]
+            }
+        }
+        return states
+    }
+
     private func stopObservation(state: String) {
         observing = false
         policy.cancel()
+        actions.cancelPending()
         capture = nil
         activeSequence = nil
         permissionTimer?.invalidate()
@@ -282,20 +345,88 @@ final class DockProbeDelegate: NSObject, NSApplicationDelegate {
         saveReport()
     }
 
-    @objc private func stop() { stopObservation(state: "stopped") }
+    @objc private func stop() { cancelVerification(); stopObservation(state: "stopped") }
+    @objc private func changeMode() {
+        let selectedIndex = modePicker.indexOfSelectedItem
+        cancelVerification()
+        policy.cancel()
+        capture = nil
+        actions.cancelPending()
+        mode = OwnedDockMode.allCases[selectedIndex]
+        modePicker.selectItem(at: selectedIndex)
+        status.stringValue = "模式：\(mode.title)；\(observing ? "正在监听" : "尚未监听")。"
+        saveReport()
+    }
+    @objc private func showSample() {
+        guard !verifier.isRunning else { return }
+        _ = makeSampleWindow()
+    }
+    @objc func showControlPanel() {
+        guard !verifier.isRunning else { return }
+        if NSApp.isHidden { NSApp.unhide(nil) }
+        showWindow()
+    }
+    private func makeSampleWindow() -> NSWindow {
+        if let sampleWindow {
+            actions.register(sampleWindow)
+            sampleWindow.deminiaturize(nil)
+            sampleWindow.makeKeyAndOrderFront(nil)
+            return sampleWindow
+        }
+        let sample = NSWindow(contentRect: NSRect(x: 240, y: 240, width: 420, height: 220),
+            styleMask: [.titled, .closable, .miniaturizable], backing: .buffered, defer: false)
+        sample.title = "Loomex 测试窗口 B"
+        sample.tabbingMode = .disallowed
+        sample.isReleasedWhenClosed = false
+        sample.delegate = self
+        let label = NSTextField(wrappingLabelWithString: "这是本原型创建的窗口 B。\n最小化模式按 Dock 点击前的主窗口操作；恢复只针对本次收起的窗口。")
+        label.frame = NSRect(x: 24, y: 60, width: 370, height: 100)
+        sample.contentView?.addSubview(label)
+        sampleWindow = sample
+        actions.register(sample)
+        sample.makeKeyAndOrderFront(nil)
+        return sample
+    }
+    @objc private func verifyActions() {
+        guard !verifier.isRunning else { return }
+        stopObservation(state: "local_verification")
+        showWindow()
+        guard let window else { return }
+        let sample = makeSampleWindow()
+        status.stringValue = "正在验证本原型窗口；Dock 监听已暂停。"
+        verifier.run(actions: actions, panel: window, sample: sample) { [weak self] summary in
+            guard let self else { return }
+            self.mode = .observe
+            self.modePicker.selectItem(at: 0)
+            self.status.stringValue = summary
+            self.reportState = "stopped"
+            self.saveReport()
+        }
+    }
+    private func cancelVerification() { verifier.cancel() }
+    func windowWillClose(_ notification: Notification) {
+        guard let closed = notification.object as? NSWindow else { return }
+        actions.forget(closed)
+        policy.cancel()
+        capture = nil
+    }
     @objc private func openAccessibility() {
         NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!)
     }
     @objc private func openInputMonitoring() {
         NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent")!)
     }
-    @objc private func closeWindows() { NSApp.windows.forEach { $0.close() } }
+    @objc private func closeWindows() {
+        cancelVerification()
+        window?.close()
+        sampleWindow?.close()
+    }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
-        if !flag { showWindow() }
-        return true
+        if actions.windowCount == 0 { showWindow() }
+        return false
     }
-    func applicationWillTerminate(_ notification: Notification) { stopObservation(state: "stopped") }
+    func applicationWillTerminate(_ notification: Notification) { cancelVerification(); stopObservation(state: "stopped") }
 }
 
 let application = NSApplication.shared
@@ -303,6 +434,9 @@ let delegate = DockProbeDelegate()
 application.setActivationPolicy(.regular)
 let menu = NSMenu()
 let appMenu = NSMenu()
+let showPanelItem = appMenu.addItem(withTitle: "显示控制面板 A", action: #selector(DockProbeDelegate.showControlPanel), keyEquivalent: "1")
+showPanelItem.target = delegate
+appMenu.addItem(.separator())
 appMenu.addItem(withTitle: "退出 Dock 输入实验", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
 let appItem = NSMenuItem()
 appItem.submenu = appMenu

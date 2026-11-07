@@ -39,5 +39,5 @@ jobs:
         run: python3 build.py --output dist
       - name: Build isolated window experiment
         run: python3 scripts/window_probe.py --test --build
-      - name: Build observation-only Dock experiment
+      - name: Build isolated Dock experiment
         run: python3 scripts/dock_probe.py --test --build
