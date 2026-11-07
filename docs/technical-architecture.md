@@ -22,7 +22,7 @@
 | 动画 | [Sources/MotionDriver.swift](../Sources/MotionDriver.swift) 对 macOS 14+ 使用显示同步回调 | 继续保留系统版本分支，回调频率不当作 GPU 实际呈现帧率 |
 | 构建 | [build.py](../build.py) 使用 swiftc、Swift 5 语言模式及 arm64 / macOS 13 目标 | 新工程迁移前保留此构建基线 |
 | 验证 | 初始化提交已在本机完成 59 项测试及构建，GitHub Actions 构建成功 | 作为迁移前证据；本次文档任务未重跑应用测试 |
-| 本机工具链 | 当前选中 Command Line Tools；swiftc 报告 Swift 6.0.3；xcodebuild -version 提示需要完整 Xcode | 编写 Xcode 工程、验证 AltTab 前，需要准备完整且与系统匹配的 Xcode |
+| 本机工具链 | Xcode 27.2 / Swift 6.4.2 / SDK 27.2，Apple Silicon / macOS 27.0 | 原启动台与固定 AltTab 已隔离构建，详见 [P0 基线](p0-baseline.md) |
 | 第三方整合 | 尚未导入 AltTab 或 Dock 项目 | 完整整合可行性、依赖漏洞检查和性能预算尚未通过原型验收 |
 
 本次核对了 SDK 头文件：SCScreenshotManager 从 macOS 14 起可用，SCStream 从 macOS 12.3 起可用，SMAppService 从 macOS 13 起可用。SDK 声明证明 API 可用性边界，不能代替对应系统上的运行验证。
@@ -190,7 +190,7 @@ GPL-3.0-only 为仓库原创代码的许可。每次引入上游固定提交，�
 | P0-E | 空闲、面板显示、收起与重复开关有基准数据 | 先分析瓶颈，再确定最终性能预算 |
 | v0.1 | 新 Xcode 应用 target 唯一入口，原 59 项测试可运行且行为回归通过 | 回退到前一可运行提交，按文件或职责逐步迁移 |
 
-本次只编写架构和需求文档，不安装 Xcode、不导入第三方源码、不修改 Bundle ID、权限配置或用户布局。
+本文件持续记录架构与复核结论；当前原型证据、兼容缺口和 Launch 骨架边界见 [P0 门禁复核](p0-readiness.md)。表中的产品模块与路径仍是设计，实际隔离原型没有替代正式窗口服务。
 
 CI 逐步从现有构建脚本迁移到 Xcode 构建；纯逻辑测试可以自动化，真实 Dock、授权及多屏需要带图形会话的验收证据。发布必须关联源码标签、依赖锁定、构建号、签名和对应完整源码。签名凭据仅放在发布环境的受控秘密中。
 
