@@ -57,6 +57,7 @@ final class DockProbeDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate
         let panel = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 860, height: 560),
                              styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
         panel.title = "Loomex Dock Input Probe"
+        panel.tabbingMode = .disallowed
         panel.isReleasedWhenClosed = false
         panel.delegate = self
         let stack = NSStackView()
@@ -285,6 +286,7 @@ final class DockProbeDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate
 
     private func recordAction(_ message: String, succeeded: Bool) {
         observations.append(["action": message, "succeeded": succeeded, "mode": mode.rawValue,
+            "ownedWindows": ownedWindowStates(),
             "timestamp": ISO8601DateFormatter().string(from: Date())])
         if observations.count > 40 { observations.removeFirst(observations.count - 40) }
         status.stringValue = message
@@ -306,12 +308,24 @@ final class DockProbeDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate
             "accessibilityGranted": AXIsProcessTrusted(), "listenEventAccess": CGPreflightListenEventAccess(),
             "eventTapInstalled": tap != nil, "primaryPressCount": primaryPressCount,
             "mode": mode.rawValue, "registeredWindowCount": actions.windowCount,
+            "ownedWindows": ownedWindowStates(),
             "unavailableHitCount": unavailableHitCount,
             "observations": observations, "doubleClickInterval": NSEvent.doubleClickInterval,
             "timestamp": ISO8601DateFormatter().string(from: Date())]
         do {
             try JSONSerialization.data(withJSONObject: report, options: [.prettyPrinted, .sortedKeys]).write(to: url, options: .atomic)
         } catch { status.stringValue = "本地实验报告保存失败：\(error.localizedDescription)" }
+    }
+
+    private func ownedWindowStates() -> [String: Any] {
+        var states = [String: Any]()
+        for (name, candidate) in [("A", window), ("B", sampleWindow)] {
+            if let candidate {
+                states[name] = ["visible": candidate.isVisible, "miniaturized": candidate.isMiniaturized,
+                                "key": candidate.isKeyWindow]
+            }
+        }
+        return states
     }
 
     private func stopObservation(state: String) {
@@ -347,6 +361,11 @@ final class DockProbeDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate
         guard !verifier.isRunning else { return }
         _ = makeSampleWindow()
     }
+    @objc func showControlPanel() {
+        guard !verifier.isRunning else { return }
+        if NSApp.isHidden { NSApp.unhide(nil) }
+        showWindow()
+    }
     private func makeSampleWindow() -> NSWindow {
         if let sampleWindow {
             actions.register(sampleWindow)
@@ -357,6 +376,7 @@ final class DockProbeDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate
         let sample = NSWindow(contentRect: NSRect(x: 240, y: 240, width: 420, height: 220),
             styleMask: [.titled, .closable, .miniaturizable], backing: .buffered, defer: false)
         sample.title = "Loomex 测试窗口 B"
+        sample.tabbingMode = .disallowed
         sample.isReleasedWhenClosed = false
         sample.delegate = self
         let label = NSTextField(wrappingLabelWithString: "这是本原型创建的窗口 B。\n最小化模式按 Dock 点击前的主窗口操作；恢复只针对本次收起的窗口。")
@@ -414,6 +434,9 @@ let delegate = DockProbeDelegate()
 application.setActivationPolicy(.regular)
 let menu = NSMenu()
 let appMenu = NSMenu()
+let showPanelItem = appMenu.addItem(withTitle: "显示控制面板 A", action: #selector(DockProbeDelegate.showControlPanel), keyEquivalent: "1")
+showPanelItem.target = delegate
+appMenu.addItem(.separator())
 appMenu.addItem(withTitle: "退出 Dock 输入实验", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
 let appItem = NSMenuItem()
 appItem.submenu = appMenu
