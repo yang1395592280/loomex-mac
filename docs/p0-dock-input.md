@@ -1,6 +1,6 @@
 # P0 / T0.3 Dock 输入原型
 
-日期：2026-11-07。状态：第一切片已实现，策略与构建通过；真实未授权路径通过。Dock 命中与授权后输入矩阵尚未验证，T0.3 尚未通过。
+日期：2026-11-07。状态：第一切片已实现，策略与构建、真实未授权路径通过；用户确认后已完成辅助功能授权，只读监听已安装。Dock 命中与真实输入矩阵尚未验证，T0.3 尚未通过。
 
 ## 运行
 
@@ -29,6 +29,7 @@ AX 命中发生在事件回调之后，可能受 Dock 动画和队列延迟影�
 
 - AX 读取 Dock 需要本实验应用的辅助功能授权；原 Window Probe 的授权不覆盖新 Bundle ID。
 - 鼠标只读 tap 的实际可用性由系统创建结果决定；`CGPreflightListenEventAccess` 仅记录当前状态，未提前申请输入监控。只有系统阻止 tap 且证实需要时才进一步申请。
+- 本机授权后实际返回 `accessibilityGranted=true`、`eventTapInstalled=true`、`listenEventAccess=false`，状态为 `observing`；未额外申请输入监控。tap 安装成功仍需真实输入证据，不代表输入矩阵已通过。
 - 不需要屏幕录制。未操作 TCC 数据库，不修改签名以冒充其他应用。
 - 本地 ad-hoc 重建后权限可能失效，需核对当前进程真实状态，不能仅看设置开关。
 
@@ -39,6 +40,7 @@ AX 命中发生在事件回调之后，可能受 Dock 动画和队列延迟影�
 | `python3 scripts/dock_probe.py --test --build --launch` | 策略 36 passed / 0 failed；app 编译、ad-hoc 签名及严格校验成功，已真实启动 |
 | GUI：点击“开始观察” | 显示“等待本实验应用的辅助功能授权；未安装事件监听。” |
 | 本地报告 | `status=blocked_accessibility`、`accessibilityGranted=false`、`observations=[]` |
+| 用户确认后刷新原型授权、点击开始 | `status=observing`、`accessibilityGranted=true`、`eventTapInstalled=true`；未开启额外输入监控 |
 | GUI：停止、关闭实验窗口、重新打开、⌘Q | 停止状态正确；实验进程在关闭窗口后保留；重新打开恢复面板，新增退出菜单支持 ⌘Q。此项不代表 Dock 命中测试通过 |
 | `python3 build.py --test --output dist-p0-dock` | 启动台 59 passed / 0 failed，构建和签名通过 |
 | `python3 scripts/window_probe.py --test` | 窗口原型确认逻辑 7 passed / 0 failed |
@@ -50,6 +52,6 @@ AX 命中发生在事件回调之后，可能受 Dock 动画和队列延迟影�
 
 ## 待执行的实机矩阵
 
-新身份最小权限获得确认后，依次验证：前台单击、从后台第一次点回、快速双击、修饰键、短拖/重排、右键、关闭全部实验窗口后的 reopen、停止监听与退出。每项同时核对系统真实行为和观察报告。
+新身份辅助功能已获用户确认并生效。CUA 获取 Dock 界面超时，当前请求用户手动完成真实 Dock 输入，并由本地报告核对；没有改用其他自动化方式发送鼠标事件。依次验证：前台单击、从后台第一次点回、快速双击、修饰键、短拖/重排、右键、关闭全部实验窗口后的 reopen、停止监听与退出。每项同时核对系统真实行为和观察报告。
 
 Dock 三个位置、自动隐藏、放大、Dock 重启、多屏、权限撤销、睡眠唤醒和最低系统仍未验证。修改系统 Dock 配置或重启 Dock 前单独说明范围并按用户授权执行。
