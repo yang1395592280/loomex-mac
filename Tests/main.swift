@@ -693,5 +693,49 @@ test("bundle icon artwork is preferred and missing resources fall back to a usab
     try check(!fallback.representations.isEmpty && fallback.size == NSSize(width: 128, height: 128), "No raw resource still yields a bounded icon")
 }
 
+test("classic product keeps its default and support override") {
+    let base = sandbox.appendingPathComponent("identity-support")
+    let custom = sandbox.appendingPathComponent("classic-custom")
+    try check(LauncherProduct.classic.supportDirectory(environment: [:], applicationSupport: base)
+        == base.appendingPathComponent("ClassicLaunchpad", isDirectory: true), "Existing default directory")
+    try check(LauncherProduct.classic.supportDirectory(environment: ["CLASSIC_LAUNCHPAD_SUPPORT_DIR": custom.path],
+        applicationSupport: base).path == custom.path, "Existing override remains a layout directory")
+}
+test("loomex ignores classic override and uses its own launch directory") {
+    let base = sandbox.appendingPathComponent("identity-support")
+    let directory = LauncherProduct.loomex.supportDirectory(environment: ["CLASSIC_LAUNCHPAD_SUPPORT_DIR": "/unused-classic"],
+                                                           applicationSupport: base)
+    try check(directory == base.appendingPathComponent("LoomexFlow/Launch", isDirectory: true), "Independent default root")
+}
+test("loomex support override is isolated beneath its launch subdirectory") {
+    let custom = sandbox.appendingPathComponent("loomex-custom")
+    let directory = LauncherProduct.loomex.supportDirectory(environment: ["LOOMEX_FLOW_SUPPORT_DIR": custom.path])
+    try check(directory == custom.appendingPathComponent("Launch", isDirectory: true), "Root override retains module boundary")
+}
+test("new loomex store never imports an existing classic layout implicitly") {
+    let base = sandbox.appendingPathComponent("no-implicit-import")
+    let classic = try LayoutStore(directory: LauncherProduct.classic.supportDirectory(environment: [:], applicationSupport: base))
+    try classic.reconcile(apps: [.app(path: "/Fixture/Old.app", name: "Old")])
+    let loomex = try LayoutStore(directory: LauncherProduct.loomex.supportDirectory(environment: [:], applicationSupport: base))
+    try check(loomex.layout.apps.isEmpty, "First Loomex launch begins independently")
+    try check(!FileManager.default.fileExists(atPath: loomex.fileURL.path), "No copy or write during initialization")
+}
+test("loomex reconciliation and preferences leave classic files unchanged") {
+    let base = sandbox.appendingPathComponent("two-products")
+    let classic = try LayoutStore(directory: LauncherProduct.classic.supportDirectory(environment: [:], applicationSupport: base))
+    try classic.reconcile(apps: [.app(path: "/Fixture/Original.app", name: "Original")])
+    let classicPreferences = classic.fileURL.deletingLastPathComponent().appendingPathComponent("preferences.json")
+    try PageMotionPreferences(style: .smooth).save(to: classicPreferences)
+    let oldLayout = try Data(contentsOf: classic.fileURL)
+    let oldPreferences = try Data(contentsOf: classicPreferences)
+    let loomex = try LayoutStore(directory: LauncherProduct.loomex.supportDirectory(environment: [:], applicationSupport: base))
+    try loomex.reconcile(apps: [.app(path: "/Fixture/New.app", name: "New")])
+    try PageMotionPreferences(style: .quick).save(to: loomex.fileURL.deletingLastPathComponent().appendingPathComponent("preferences.json"))
+    let currentLayout = try Data(contentsOf: classic.fileURL)
+    let currentPreferences = try Data(contentsOf: classicPreferences)
+    try check(currentLayout == oldLayout, "Classic layout bytes remain unchanged")
+    try check(currentPreferences == oldPreferences, "Classic preferences bytes remain unchanged")
+}
+
 print("RESULT: \(passed) passed, \(failed) failed")
 if failed != 0 { exit(1) }

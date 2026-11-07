@@ -39,6 +39,10 @@ jobs:
         run: python3 -m unittest discover -s Tests -p 'test_preview_budget.py'
       - name: Build and verify local signature
         run: python3 build.py --output dist
+      - name: Build Loomex application shell
+        run: |
+          xcodebuild -quiet -project LoomexFlow.xcodeproj -scheme LoomexFlow -configuration Release -destination 'platform=macOS,arch=arm64' -derivedDataPath .local-data/build/loomex-shell build
+          codesign --verify --deep --strict '.local-data/build/loomex-shell/Build/Products/Release/Loomex Flow.app'
       - name: Build isolated window experiment
         run: python3 scripts/window_probe.py --test --build
       - name: Build isolated Dock experiment
