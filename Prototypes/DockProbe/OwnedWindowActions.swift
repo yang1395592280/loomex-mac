@@ -102,7 +102,7 @@ final class OwnedWindowActions {
             case .hidden:
                 // Unhiding must not expand windows the user minimized before our hide action.
                 guard !window.isMiniaturized else { completion(.failure(OwnedDockError.stale)); return }
-                NSApp.unhide(nil)
+                if NSApp.isHidden { NSApp.unhide(nil) }
                 expectedHidden = false
                 message = "已恢复本原型应用"
             case .minimized:
@@ -110,7 +110,7 @@ final class OwnedWindowActions {
                 expectedMinimized = false
                 message = "已恢复本次收起的测试窗口"
             }
-            NSApp.activate(ignoringOtherApps: true)
+            if !NSApp.isActive { NSApp.activate(ignoringOtherApps: true) }
             window.makeKeyAndOrderFront(nil)
         } else {
             guard recovery == nil, NSApp.isActive, window.isVisible, !window.isMiniaturized else {

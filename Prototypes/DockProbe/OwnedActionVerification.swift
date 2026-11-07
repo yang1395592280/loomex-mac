@@ -9,6 +9,9 @@ final class OwnedActionVerification {
     private var panel: NSWindow?
     private var sample: NSWindow?
     private var completion: ((String) -> Void)?
+    private var lifecycleObservers = [NSObjectProtocol]()
+    private var timeline = [[String: Any]]()
+    private var startedAt = TimeInterval(0)
 
     func run(actions: OwnedWindowActions, panel: NSWindow, sample: NSWindow,
              completion: @escaping (String) -> Void) {
@@ -20,11 +23,19 @@ final class OwnedActionVerification {
         self.panel = panel
         self.sample = sample
         self.completion = completion
-        NSApp.unhide(nil)
-        panel.deminiaturize(nil)
-        sample.deminiaturize(nil)
-        panel.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
+        timeline = []
+        startedAt = ProcessInfo.processInfo.systemUptime
+        for (event, name) in [(NSApplication.didHideNotification, "didHide"),
+                              (NSApplication.didUnhideNotification, "didUnhide"),
+                              (NSApplication.didBecomeActiveNotification, "didBecomeActive"),
+                              (NSApplication.didResignActiveNotification, "didResignActive")] {
+            lifecycleObservers.append(NotificationCenter.default.addObserver(forName: event, object: NSApp, queue: .main) {
+                [weak self] _ in self?.recordState(name)
+            })
+        }
+        // The UI already prepared A/B. A queued activation/unhide here can undo the following hide.
+        // Require the real foreground state instead of manufacturing it inside the verification.
+        recordState("readyRequested")
         wait("两个自建窗口就绪", condition: {
             actions.windowCount == 2 && NSApp.isActive && panel.isVisible && sample.isVisible
                 && !panel.isMiniaturized && !sample.isMiniaturized
@@ -89,8 +100,10 @@ final class OwnedActionVerification {
     private func perform(_ name: String, context: OwnedDockContext, restoring: Bool,
                          condition: @escaping () -> Bool, next: @escaping () -> Void) {
         let token = runID
+        recordState("request: \(name)")
         actions?.perform(context, restoring: restoring) { result in
             guard self.isRunning, self.runID == token else { return }
+            self.recordState("confirmed: \(name)")
             guard case .success = result else { self.fail(name, outcome: result); return }
             if self.check(name, condition()) { next() }
         }
@@ -127,24 +140,37 @@ final class OwnedActionVerification {
         finish(state: "failed")
     }
 
+    private func recordState(_ event: String) {
+        guard isRunning else { return }
+        timeline.append(["event": event, "elapsedSeconds": ProcessInfo.processInfo.systemUptime - startedAt,
+            "active": NSApp.isActive, "hidden": NSApp.isHidden,
+            "runningApplicationHidden": NSRunningApplication.current.isHidden,
+            "panelVisible": panel?.isVisible ?? false, "sampleVisible": sample?.isVisible ?? false,
+            "panelMinimized": panel?.isMiniaturized ?? false, "sampleMinimized": sample?.isMiniaturized ?? false])
+        if timeline.count > 80 { timeline.removeFirst() }
+    }
+
     func cancel() {
         guard isRunning else { return }
         finish(state: "cancelled")
     }
 
     private func finish(state: String) {
+        recordState("finish: \(state)")
         isRunning = false
+        lifecycleObservers.forEach { NotificationCenter.default.removeObserver($0) }
+        lifecycleObservers = []
         runID = UUID()
         actions?.cancelPending()
         sample?.close()
         if let sample { actions?.forget(sample) }
-        NSApp.unhide(nil)
+        if NSApp.isHidden { NSApp.unhide(nil) }
         panel?.deminiaturize(nil)
         panel?.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
+        if !NSApp.isActive { NSApp.activate(ignoringOtherApps: true) }
         if let actions { _ = actions.snapshot(mode: .observe) }
         let report: [String: Any] = ["status": state, "scope": "owned-AppKit-actions-only",
-            "checks": results, "timestamp": ISO8601DateFormatter().string(from: Date())]
+            "checks": results, "lifecycle": timeline, "timestamp": ISO8601DateFormatter().string(from: Date())]
         let url = Bundle.main.bundleURL.deletingLastPathComponent().appendingPathComponent("dock-actions-verification.json")
         var summary = "本地动作验证：\(state)，\(results.filter { $0["passed"] as? Bool == true }.count)/6；Dock 监听已停止。"
         do {
