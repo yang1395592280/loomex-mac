@@ -1,6 +1,6 @@
 # Loomex Flow 产品与技术规划
 
-日期：2026-11-07。状态：初期规划留存，尚未开始代码整合。
+日期：2026-11-07。状态：初期规划留存；当前 Launch 骨架及统一设置已落地，最新事实以 README 与实现记录为准。
 
 当前细化方案见 [技术选型与整体架构](technical-architecture.md) 和 [整体需求与开发方案](requirements-and-development.md)。本文件保留初期构想与调研过程；技术边界、需求默认值和验收口径以细化方案为准。
 
@@ -146,7 +146,7 @@ AltTab 是完整应用，其入口、全局状态、窗口追踪、权限、设�
 
 现有布局位置：`~/Library/Application Support/ClassicLaunchpad/`。
 
-建议新产品目录：`~/Library/Application Support/LoomexFlow/`，启动台布局单独放在 Launch 子目录。这些是新产品的设计路径，当前尚未创建。
+建议新产品目录：`~/Library/Application Support/LoomexFlow/`，启动台布局单独放在 Launch 子目录。该目录划分已用于新应用，应用级配置另存于根目录的 settings.json；旧布局导入尚未实现。
 
 迁移采用“读取 → 校验 → 备份 → 复制到新目录 → 在新目录写入”的流程。首次使用检测到旧布局时提供导入入口，导入失败保留旧文件并说明原因。测试必须使用独立支持目录。
 

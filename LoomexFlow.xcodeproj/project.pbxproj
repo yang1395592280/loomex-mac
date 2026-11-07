@@ -4,6 +4,10 @@
 	classes = {};
 	objectVersion = 56;
 	objects = {
+		ACCD28189BC304C4F9BE50F6 /* FlowSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlowSettingsView.swift; sourceTree = "<group>"; };
+		3E82982E0D0E428B74E61462 /* FlowSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACCD28189BC304C4F9BE50F6; };
+		B333647DCCE4E94227F10A19 /* FlowSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlowSettings.swift; sourceTree = "<group>"; };
+		2C4C309AB508E296457B63CE /* FlowSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = B333647DCCE4E94227F10A19; };
 		BABAFDAC79D5D60832A4A36B /* Interaction.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33865FDEC433C552C40D61BA; };
 		9CFADA62944A28B6E48555FB /* Interface.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9DCFED8AFD4B5E14C01FF852; };
 		A2AA3DBE7468EA888390E0A0 /* LauncherApplicationDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4D903A49E50AA3199A501F4; };
@@ -24,9 +28,9 @@
 		A8792157CB4F27FB949C035F = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Loomex Flow.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		19F479106CE8C3BA8C106518 = {isa = PBXGroup; children = (4B50FFC5D59B3D3197B810D2, FC233BDA2344D97687F5A251, 0A3E27B8CA818264D75C8D81); sourceTree = "<group>"; };
 		4B50FFC5D59B3D3197B810D2 = {isa = PBXGroup; children = (33865FDEC433C552C40D61BA, 9DCFED8AFD4B5E14C01FF852, F4D903A49E50AA3199A501F4, D5DE36D1F627D918C0E5A13E, 0347564E4D7C79A08BA0D895, E080F74F7BC1A173A1B48F33); path = Sources; sourceTree = "<group>"; };
-		FC233BDA2344D97687F5A251 = {isa = PBXGroup; children = (B17639960B5CAB67ED4CA9D5, 741BD3D99A377EA2A50A580D, 9CEEC13202AFBF12EE3ABB99); path = App; sourceTree = "<group>"; };
+		FC233BDA2344D97687F5A251 = {isa = PBXGroup; children = (ACCD28189BC304C4F9BE50F6, B333647DCCE4E94227F10A19, B17639960B5CAB67ED4CA9D5, 741BD3D99A377EA2A50A580D, 9CEEC13202AFBF12EE3ABB99); path = App; sourceTree = "<group>"; };
 		0A3E27B8CA818264D75C8D81 = {isa = PBXGroup; children = (A8792157CB4F27FB949C035F); name = Products; sourceTree = "<group>"; };
-		D626F04DF571B9BB2451CBFE = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (BABAFDAC79D5D60832A4A36B, 9CFADA62944A28B6E48555FB, A2AA3DBE7468EA888390E0A0, 7FD0E022952E191F144D8A97, E6C2A7742CB4F92BEE31443E, E22394FF1DE7325A39DB58EC, 18B854D5B8EC3E7538128310, 5BCB116B9D22032477AD6CEB); runOnlyForDeploymentPostprocessing = 0; };
+		D626F04DF571B9BB2451CBFE = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (3E82982E0D0E428B74E61462, 2C4C309AB508E296457B63CE, BABAFDAC79D5D60832A4A36B, 9CFADA62944A28B6E48555FB, A2AA3DBE7468EA888390E0A0, 7FD0E022952E191F144D8A97, E6C2A7742CB4F92BEE31443E, E22394FF1DE7325A39DB58EC, 18B854D5B8EC3E7538128310, 5BCB116B9D22032477AD6CEB); runOnlyForDeploymentPostprocessing = 0; };
 		951DDECB505D289B8BC956E6 = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
 		5C2473E515024614E403B8B9 = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
 		34A04005BCAF206EEC990BD9 = {isa = PBXNativeTarget; buildConfigurationList = 4A807E8A027297B0B93701FB; buildPhases = (D626F04DF571B9BB2451CBFE, 951DDECB505D289B8BC956E6, 5C2473E515024614E403B8B9); buildRules = (); dependencies = (); name = LoomexFlow; productName = "Loomex Flow"; productReference = A8792157CB4F27FB949C035F; productType = "com.apple.product-type.application"; };
