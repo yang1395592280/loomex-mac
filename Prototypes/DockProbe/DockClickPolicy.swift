@@ -37,6 +37,10 @@ struct DockClickPolicy {
     private var lastDown: TimeInterval?
     private var deadline: TimeInterval?
 
+    init(doubleClickInterval: TimeInterval) {
+        self.doubleClickInterval = doubleClickInterval
+    }
+
     mutating func begin(at time: TimeInterval) -> DockPress {
         sequence += 1
         deadline = nil
