@@ -42,7 +42,7 @@ CLASSIC_LAUNCHPAD_SUPPORT_DIR="$PWD/.local-data/launch" \
   "dist/经典启动台.app/Contents/MacOS/ClassicLaunchpad"
 ```
 
-GitHub Actions 在 Apple Silicon macOS runner 上构建启动台、隔离窗口原型和只观察的 Dock 输入原型，校验签名，并执行无需 GUI 的窗口状态确认与 Dock 点击策略测试；另一个 Ubuntu 任务执行上游验证脚本测试，并下载核对固定 AltTab 源码。需要图形会话的测试和真实 Dock 交互在本机验证。
+GitHub Actions 在 Apple Silicon macOS runner 上构建启动台、隔离窗口原型和默认只观察的 Dock 原型，校验签名，并执行无需 GUI 的窗口状态确认与 Dock 点击策略测试；另一个 Ubuntu 任务执行上游验证脚本测试，并下载核对固定 AltTab 源码。需要图形会话的测试和真实 Dock 交互在本机验证。
 
 ## 代码与文档
 
@@ -55,7 +55,7 @@ GitHub Actions 在 Apple Silicon macOS runner 上构建启动台、隔离窗口�
 | [整体需求与开发方案](docs/requirements-and-development.md) | 功能规格、默认行为、任务拆解、性能预算与验收矩阵 |
 | [P0 构建基线](docs/p0-baseline.md) | AltTab 固定版本、依赖核对、验证命令与当前工具链状态 |
 | [P0 窗口原型](docs/p0-window-probe.md) | 自建窗口的控制实验、辅助功能授权与实际验证边界 |
-| [P0 Dock 输入原型](docs/p0-dock-input.md) | 只观察自身 Dock 图标、点击前状态与快速连击策略；不执行窗口动作 |
+| [P0 Dock 原型](docs/p0-dock-input.md) | 默认观察自身 Dock 图标；可选自建窗口隐藏、最小化与定向恢复实验，尚非产品功能 |
 | [初期产品规划](docs/loomex-mac-plan.md) | 初期构想及开源项目调研，细化方案以以上两份文档为准 |
 | [经典启动台原版说明](docs/classic-launchpad.md) | 迁入前 1.0.6 使用说明，作为历史基线保留 |
 | [开发贡献说明](CONTRIBUTING.md) | 分支、提交和验证方式 |

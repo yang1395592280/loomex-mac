@@ -66,6 +66,36 @@ struct DockClickPolicyTests {
         _ = policy.finish(gesture(press))
         expect(policy.settle(at: 46, for: oldPress) == nil, "An old timer cannot settle a new gesture")
         expect(policy.settle(at: 46, for: press) == .wouldHide, "The matching timer must still settle")
+        func recoveryGesture(_ press: DockPress, modifiers: Bool = false, dragged: Bool = false,
+                             windows: Int = 2, hit: DockHit = .fixture(dockPID: 100)) -> DockGesture {
+            var value = gesture(press, upHit: hit, foreground: false, windows: windows,
+                                modifiers: modifiers, dragged: dragged)
+            value.hasOwnedRecovery = true
+            return value
+        }
+        press = policy.begin(at: 50)
+        expect(policy.finish(recoveryGesture(press)) == .pendingRestore, "Owned recovery must work from background")
+        expect(policy.settle(at: 50.59, for: press) == nil, "Restoration must wait for multi-click cancellation")
+        expect(policy.settle(at: 50.61, for: press) == .wouldRestore, "Recovery must remain distinct from collapse")
+        expect(policy.settle(at: 51, for: press) == nil, "Restoration must settle once")
+        press = policy.begin(at: 52)
+        _ = policy.finish(recoveryGesture(press))
+        press = policy.begin(at: 52.2)
+        expect(policy.finish(recoveryGesture(press)) == .rapidClick, "A recovery double-click must be excluded")
+        expect(policy.settle(at: 53, for: press) == nil, "Double-click must cancel pending restoration")
+        for (index, item) in [(DockDecision.modifiers, true, false, 2, DockHit.fixture(dockPID: 100)),
+                               (.drag, false, true, 2, .fixture(dockPID: 100)),
+                               (.noWindows, false, false, 0, .fixture(dockPID: 100)),
+                               (.uncertain, false, false, 2, .unavailable)].enumerated() {
+            press = policy.begin(at: Double(60 + index * 2))
+            expect(policy.finish(recoveryGesture(press, modifiers: item.1, dragged: item.2, windows: item.3, hit: item.4)) == item.0,
+                   "Recovery cannot bypass input/identity guards")
+            expect(policy.settle(at: Double(62 + index * 2), for: press) == nil, "Rejected restoration leaves no candidate")
+        }
+        press = policy.begin(at: 70)
+        _ = policy.finish(recoveryGesture(press))
+        policy.cancel()
+        expect(policy.settle(at: 71, for: press) == nil, "Stopping must cancel restoration as well as collapse")
         print("Dock click policy: \(checks) passed, 0 failed")
     }
 }

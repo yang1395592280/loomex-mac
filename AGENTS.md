@@ -3,7 +3,7 @@
 ## 项目现状
 
 - 产品名 Loomex Flow，仓库名 loomex-mac，整套按 GPL-3.0 路线开源。
-- 当前产品源码只有 ClassicLaunchpad 1.0.6 基线；另有隔离的 P0 窗口原型及只观察的 Dock 输入原型，窗口切换、Dock 增强和统一应用层尚未实现。
+- 当前产品源码只有 ClassicLaunchpad 1.0.6 基线；另有隔离的 P0 窗口原型及默认只观察的 Dock 原型（可选自身窗口动作实验），产品窗口切换、Dock 增强和统一应用层尚未实现。
 - 先读 README.md、docs/loomex-mac-plan.md 和相关源码，再修改。
 - 当前真实目录是 Sources/、Tests/，不要把规划中的模块路径或服务当作已存在的实现。
 
