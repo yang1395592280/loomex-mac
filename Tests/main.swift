@@ -737,5 +737,82 @@ test("loomex reconciliation and preferences leave classic files unchanged") {
     try check(currentPreferences == oldPreferences, "Classic preferences bytes remain unchanged")
 }
 
+final class LifecycleLauncher: LauncherApplicationDelegate {
+    var enabled = true
+    override var isLauncherEnabled: Bool { enabled }
+}
+
+func drainScan(_ delegate: LauncherApplicationDelegate) throws {
+    let deadline = Date().addingTimeInterval(5)
+    while delegate.scanning && Date() < deadline {
+        RunLoop.current.run(until: Date().addingTimeInterval(0.01))
+    }
+    try check(!delegate.scanning, "Background scan must finish within the test deadline")
+}
+
+func withLifecycleLauncher(_ name: String, _ body: (LifecycleLauncher, URL) throws -> Void) throws {
+    let directory = sandbox.appendingPathComponent(name)
+    let original = ProcessInfo.processInfo.environment["LOOMEX_FLOW_SUPPORT_DIR"]
+    setenv("LOOMEX_FLOW_SUPPORT_DIR", directory.path, 1)
+    defer {
+        if let original { setenv("LOOMEX_FLOW_SUPPORT_DIR", original, 1) }
+        else { unsetenv("LOOMEX_FLOW_SUPPORT_DIR") }
+    }
+    let roots = directory.appendingPathComponent("empty-apps")
+    try FileManager.default.createDirectory(at: roots, withIntermediateDirectories: true)
+    let delegate = LifecycleLauncher(product: .loomex, applicationRoots: [roots])
+    defer { delegate.stopLauncher() }
+    try body(delegate, directory.appendingPathComponent("Launch"))
+}
+
+test("module creation stays hidden and stop releases the canvas and its local monitor") {
+    try withLifecycleLauncher("module-release") { delegate, _ in
+        weak var canvas: LaunchCanvas?
+        try autoreleasepool {
+            try delegate.startLauncher()
+            canvas = delegate.canvas
+            let window = delegate.launcherWindow
+            try delegate.startLauncher()
+            try check(window === delegate.launcherWindow, "Repeated start reuses the module")
+            try check(window?.isVisible == false && canvas?.resourcesSuspended == true, "Enable does not steal focus")
+            delegate.enabled = false
+            delegate.stopLauncher()
+        }
+        try drainScan(delegate)
+        try check(canvas == nil && delegate.store == nil && delegate.launcherWindow == nil,
+                  "Stopping releases the canvas (whose deinit removes its monitor), window and store")
+    }
+}
+
+test("late scan after disable cannot modify a retained layout") {
+    try withLifecycleLauncher("module-late-scan") { delegate, directory in
+        let store = try LayoutStore(directory: directory)
+        try store.reconcile(apps: [.app(path: "/Fixture/Preserved.app", name: "Preserved")])
+        let original = try Data(contentsOf: store.fileURL)
+        try delegate.startLauncher()
+        delegate.enabled = false
+        delegate.stopLauncher()
+        try drainScan(delegate)
+        let after = try Data(contentsOf: store.fileURL)
+        try check(after == original, "The stale empty scan cannot remove the stored app")
+    }
+}
+
+test("reenable during a scan waits then reconciles only the new module") {
+    try withLifecycleLauncher("module-reenable") { delegate, directory in
+        let store = try LayoutStore(directory: directory)
+        try store.reconcile(apps: [.app(path: "/Fixture/Removed.app", name: "Removed")])
+        try delegate.startLauncher()
+        delegate.enabled = false
+        delegate.stopLauncher()
+        delegate.enabled = true
+        try delegate.startLauncher()
+        try check(delegate.scanning, "The original request retains its slot until completion")
+        try drainScan(delegate)
+        try check(delegate.store?.layout.apps.isEmpty == true, "A fresh scan reconciles the new module")
+        try check(delegate.canvas?.resourcesSuspended == true, "Background enable retains no grid resources")
+    }
+}
+
 print("RESULT: \(passed) passed, \(failed) failed")
 if failed != 0 { exit(1) }

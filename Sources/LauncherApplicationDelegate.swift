@@ -12,64 +12,83 @@ class LauncherApplicationDelegate: NSObject, NSApplicationDelegate {
     var launcherWindow: LaunchWindow?
     var canvas: LaunchCanvas?
     var store: LayoutStore?
-    private var scanning = false
+    private(set) var scanning = false
     private var openingLauncher = false
     private var menuBarCover: MenuBarCoverWindow?
     private var lastScan = Date.distantPast
+    private var scanGeneration = 0
+
+    var isLauncherEnabled: Bool { true }
+    var shouldPresentLauncherOnActivation: Bool { true }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         buildMenu()
-        let support = product.supportDirectory()
+        guard isLauncherEnabled else { return }
         do {
-            let store = try LayoutStore(directory: support)
-            self.store = store
-            let window = LaunchWindow(contentRect: NSScreen.main?.frame ?? NSRect(x: 0, y: 0, width: 1280, height: 800),
-                                      styleMask: [.borderless], backing: .buffered, defer: false)
-            window.title = product.name
-            window.isOpaque = false
-            window.backgroundColor = .clear
-            window.hasShadow = false
-            window.level = .normal
-            window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary, .ignoresCycle]
-            window.hidesOnDeactivate = false
-            window.isReleasedWhenClosed = false
-            let canvas = LaunchCanvas(store: store)
-            canvas.applicationName = product.name
-            canvas.dismiss = { [weak self] in self?.hideLauncher() }
-            canvas.launch = { [weak self] item in self?.openApplication(item) }
-            canvas.rescan = { [weak self] in self?.scanApplications() }
-            canvas.showAbout = { [weak self] in self?.about() }
-            window.contentView = canvas
-            self.canvas = canvas
-            launcherWindow = window
+            try startLauncher()
             showLauncher()
-            scanApplications()
-        } catch {
-            let alert = NSAlert()
-            alert.messageText = "无法读取启动台布局"
-            alert.informativeText = "为保护原有排序，程序没有覆盖布局文件。可在布局目录中找到上一版 layout.json.backup。\n\n" + error.localizedDescription
-            alert.addButton(withTitle: "退出")
-            alert.addButton(withTitle: "查看布局目录")
-            if alert.runModal() == .alertSecondButtonReturn {
-                NSWorkspace.shared.open(support)
-            }
-            NSApp.terminate(nil)
+        } catch { launcherFailedToStart(error) }
+    }
+
+    func startLauncher() throws {
+        guard isLauncherEnabled, launcherWindow == nil else { return }
+        let store = try LayoutStore(directory: product.supportDirectory())
+        self.store = store
+        let window = LaunchWindow(contentRect: NSScreen.main?.frame ?? NSRect(x: 0, y: 0, width: 1280, height: 800),
+                                  styleMask: [.borderless], backing: .buffered, defer: false)
+        window.title = product.name
+        window.isOpaque = false
+        window.backgroundColor = .clear
+        window.hasShadow = false
+        window.level = .normal
+        window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary, .ignoresCycle]
+        window.hidesOnDeactivate = false
+        window.isReleasedWhenClosed = false
+        let canvas = LaunchCanvas(store: store)
+        canvas.applicationName = product.name
+        canvas.dismiss = { [weak self] in self?.hideLauncher() }
+        canvas.launch = { [weak self] item in self?.openApplication(item) }
+        canvas.rescan = { [weak self] in self?.scanApplications() }
+        canvas.showAbout = { [weak self] in self?.about() }
+        window.contentView = canvas
+        self.canvas = canvas
+        launcherWindow = window
+        // Creation need not present the full-screen grid (for example, enabling from settings).
+        canvas.suspendResources()
+        scanApplications()
+    }
+
+    func launcherFailedToStart(_ error: Error) {
+        let alert = NSAlert()
+        alert.messageText = "无法读取启动台布局"
+        alert.informativeText = "为保护原有排序，程序没有覆盖布局文件。可在布局目录中找到上一版 layout.json.backup。\n\n" + error.localizedDescription
+        alert.addButton(withTitle: "退出")
+        alert.addButton(withTitle: "查看布局目录")
+        if alert.runModal() == .alertSecondButtonReturn {
+            NSWorkspace.shared.open(product.supportDirectory())
         }
+        NSApp.terminate(nil)
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        if ProcessInfo.processInfo.environment[product.traceEnvironmentKey] == "1" {
+            fputs("UI_TRACE event=reopen visible_windows=\(flag)\n", stderr)
+        }
         showLauncher()
         return false
     }
 
     func applicationOpenUntitledFile(_ sender: NSApplication) -> Bool {
+        if ProcessInfo.processInfo.environment[product.traceEnvironmentKey] == "1" {
+            fputs("UI_TRACE event=open_untitled\n", stderr)
+        }
         showLauncher()
         return true
     }
 
     func applicationDidBecomeActive(_ notification: Notification) {
         // Dock activation may restore a hidden application before delivering its reopen event.
-        if let window = launcherWindow, !openingLauncher,
+        if shouldPresentLauncherOnActivation, let window = launcherWindow, !openingLauncher,
            !window.isVisible || canvas?.resourcesSuspended == true { showLauncher() }
         updateLauncherPresentation()
     }
@@ -78,18 +97,19 @@ class LauncherApplicationDelegate: NSObject, NSApplicationDelegate {
         restoreLauncherPresentation()
         DispatchQueue.main.async { [weak self] in
             // Clicking exposed desktop edges activates Finder; that alone must not dismiss the grid.
-            guard !NSApp.isActive, let foreground = NSWorkspace.shared.frontmostApplication,
+            guard let self = self, self.launcherWindow?.isVisible == true,
+                  !NSApp.isActive, let foreground = NSWorkspace.shared.frontmostApplication,
                   foreground.processIdentifier != ProcessInfo.processInfo.processIdentifier,
                   foreground.activationPolicy == .regular,
                   foreground.bundleIdentifier != "com.apple.finder" else { return }
-            self?.hideLauncher()
+            self.hideLauncher()
         }
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
 
     func showLauncher() {
-        guard let window = launcherWindow, !openingLauncher else { return }
+        guard isLauncherEnabled, let window = launcherWindow, !openingLauncher else { return }
         openingLauncher = true
         defer { openingLauncher = false }
         let point = NSEvent.mouseLocation
@@ -112,6 +132,7 @@ class LauncherApplicationDelegate: NSObject, NSApplicationDelegate {
             fputs("UI_TRACE show visible=\(window.isVisible) resources_suspended=\(canvas?.resourcesSuspended ?? false)\n", stderr)
         }
         if Date().timeIntervalSince(lastScan) > 30 { scanApplications() }
+        launcherVisibilityDidChange()
     }
 
     private func updateLauncherPresentation() {
@@ -155,14 +176,40 @@ class LauncherApplicationDelegate: NSObject, NSApplicationDelegate {
     }
 
     func hideLauncher() {
+        dismissLauncher()
+        NSApp.hide(nil)
+        if ProcessInfo.processInfo.environment[product.traceEnvironmentKey] == "1" {
+            fputs("UI_TRACE hidden=\(NSApp.isHidden)\n", stderr)
+        }
+    }
+
+    func dismissLauncher() {
         restoreLauncherPresentation()
         launcherWindow?.orderOut(nil)
         canvas?.suspendResources()
-        NSApp.hide(nil)
+        launcherVisibilityDidChange()
         if ProcessInfo.processInfo.environment[product.traceEnvironmentKey] == "1" {
             fputs("UI_TRACE dismiss visible=\(launcherWindow?.isVisible ?? false) hidden=\(NSApp.isHidden) resources_suspended=\(canvas?.resourcesSuspended ?? false) icon_cache_count=\(canvas?.icons.count ?? 0)\n", stderr)
         }
     }
+
+    func stopLauncher() {
+        scanGeneration += 1
+        lastScan = .distantPast
+        dismissLauncher()
+        launcherWindow?.contentView = nil
+        launcherWindow?.close()
+        launcherWindow = nil
+        canvas = nil
+        store = nil
+        menuBarCover?.close()
+        menuBarCover = nil
+        if ProcessInfo.processInfo.environment[product.traceEnvironmentKey] == "1" {
+            fputs("UI_TRACE launch_stopped window_released=\(launcherWindow == nil) canvas_released=\(canvas == nil)\n", stderr)
+        }
+    }
+
+    func launcherVisibilityDidChange() {}
 
     func applicationDidHide(_ notification: Notification) {
         restoreLauncherPresentation()
@@ -170,15 +217,23 @@ class LauncherApplicationDelegate: NSObject, NSApplicationDelegate {
     }
 
     func scanApplications() {
-        guard !scanning else { return }
+        guard isLauncherEnabled, store != nil, !scanning else { return }
         scanning = true
+        let generation = scanGeneration
         let identifier = Bundle.main.bundleIdentifier
         let roots = applicationRoots
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             let apps = AppScanner.scan(roots: roots, excluding: identifier)
             DispatchQueue.main.async {
-                guard let self = self, let store = self.store else { return }
+                guard let self = self else { return }
                 self.scanning = false
+                // Disabling cannot cancel the OS scan. Discard its result before any layout write,
+                // and only admit a fresh scan after the single physical request has completed.
+                guard self.isLauncherEnabled, let store = self.store else { return }
+                guard generation == self.scanGeneration else {
+                    self.scanApplications()
+                    return
+                }
                 self.lastScan = Date()
                 do { try store.reconcile(apps: apps); self.canvas?.refresh() }
                 catch { self.canvas?.report(error) }
@@ -233,7 +288,7 @@ class LauncherApplicationDelegate: NSObject, NSApplicationDelegate {
         NSApp.mainMenu = bar
     }
 
-    @objc private func launcherOptions() { canvas?.showOptions() }
+    @objc func launcherOptions() { canvas?.showOptions() }
 
     @objc func about() {
         let alert = NSAlert()

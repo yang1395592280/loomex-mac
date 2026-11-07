@@ -6,14 +6,14 @@ Loomex Flow 是一款开源 macOS 交互增强工具，计划统一应用启动�
 
 ## 当前状态
 
-项目已导入可独立构建的 ClassicLaunchpad 1.0.6 基线，并建立仅接入经典启动台的 Loomex Flow 应用骨架。
+项目已导入可独立构建的 ClassicLaunchpad 1.0.6 基线，并接入 Loomex Flow 应用、统一设置与启动台启停。
 
 | 模块 | 状态 |
 | --- | --- |
 | 经典启动台 | 已导入：网格、搜索、分页、文件夹、拖拽、排序、撤销及布局备份 |
 | 窗口切换 | 规划中：基于 AltTab 整合 |
 | Dock 增强 | 规划中：点击隐藏、最小化及恢复 |
-| 统一应用与设置 | 已有独立应用身份、菜单栏、关于与退出；统一设置、模块开关、权限和快捷键待开发 |
+| 统一应用与设置 | 已有独立身份、菜单栏、SwiftUI 设置和 Launch 启停；Switch/Dock 接入、全局暂停、权限及快捷键编辑待开发 |
 
 `build.py` 继续输出“经典启动台.app”；新 Xcode target 输出“Loomex Flow.app”，使用独立应用标识和布局目录。三个模块尚未完成整合，当前开发包仅本地 ad-hoc 签名，未做 Apple 公证或正式发布。
 
@@ -29,7 +29,7 @@ python3 build.py --test --output dist
 
 构建结果：`dist/经典启动台.app`。应用采用本地 ad-hoc 签名，尚未经过 Developer ID 签名或 Apple 公证。
 
-现有 64 项测试涉及布局模型、排序、撤销、手势、偏好存储、真实视图命中和两个产品的数据隔离，需要可用的 macOS 图形会话。仅构建可执行：
+现有 67 项测试涉及布局模型、排序、撤销、手势、偏好存储、真实视图命中、两个产品的数据隔离及模块生命周期，需要可用的 macOS 图形会话。仅构建可执行：
 
 ```sh
 python3 build.py --output dist
@@ -50,16 +50,16 @@ xcodebuild -quiet -project LoomexFlow.xcodeproj -scheme LoomexFlow \
   -derivedDataPath .local-data/build/loomex-shell build
 ```
 
-构建结果位于 `.local-data/build/loomex-shell/Build/Products/Debug/Loomex Flow.app`。试运行隔离方式、菜单功能与实测范围见 [Launch 应用骨架](docs/launcher-shell.md)。新应用默认写入 `~/Library/Application Support/LoomexFlow/Launch/`，本切片不自动导入原版布局。
+构建结果位于 `.local-data/build/loomex-shell/Build/Products/Debug/Loomex Flow.app`。试运行隔离方式与原交互验证见 [Launch 应用骨架](docs/launcher-shell.md)，设置、启停和最新验证边界见 [统一设置](docs/unified-settings.md)。新应用默认写入 `~/Library/Application Support/LoomexFlow/Launch/`，本切片不自动导入原版布局。
 
-GitHub Actions 在 Apple Silicon macOS runner 上构建两个产品及三个隔离原型，校验签名，并执行无需 GUI 的窗口状态、Dock 点击策略和预览生命周期测试；另一个 Ubuntu 任务执行上游验证脚本测试，并下载核对固定 AltTab 源码。64 项启动台回归及需要系统授权的行为在本机图形会话中验证。
+GitHub Actions 在 Apple Silicon macOS runner 上构建两个产品及三个隔离原型，校验签名，并执行无需 GUI 的窗口状态、Dock 点击策略和预览生命周期测试；另一个 Ubuntu 任务执行上游验证脚本测试，并下载核对固定 AltTab 源码。67 项启动台回归及需要系统授权的行为在本机图形会话中验证。应用级设置另有 28 个无 GUI 断言：`python3 scripts/app_settings.py`，并进入 CI。
 
 ## 代码与文档
 
 | 路径 | 内容 |
 | --- | --- |
 | `Sources/` | 当前经典启动台的 Swift / AppKit 实现 |
-| `App/` / `LoomexFlow.xcodeproj` | Loomex 入口、菜单栏与仅接入 Launch 的 Xcode target |
+| `App/` / `LoomexFlow.xcodeproj` | Loomex 入口、菜单栏、SwiftUI 设置与仅接入 Launch 的 Xcode target |
 | `Tests/main.swift` | 现有回归测试 |
 | `build.py` / `make_icon.swift` | 编译、图标生成及本地签名 |
 | [技术选型与整体架构](docs/technical-architecture.md) | 原生技术栈、候选比较、模块依赖、系统 API、线程、权限与工程迁移 |

@@ -3,7 +3,7 @@
 ## 项目现状
 
 - 产品名 Loomex Flow，仓库名 loomex-mac，整套按 GPL-3.0 路线开源。
-- 当前产品已有 ClassicLaunchpad 1.0.6 基线及仅接入 Launch 的 Loomex 应用骨架；另有隔离的 P0 窗口、Dock 和自建窗口预览原型。产品窗口切换、Dock 增强及统一设置尚未实现。
+- 当前产品已有 ClassicLaunchpad 1.0.6 基线及仅接入 Launch 的 Loomex 应用骨架；另有隔离的 P0 窗口、Dock 和自建窗口预览原型。统一设置已有 Launch 启停与真实状态；产品窗口切换、Dock 增强尚未实现。
 - 先读 README.md、docs/loomex-mac-plan.md 和相关源码，再修改。
 - 当前真实目录为 App/、Sources/、Tests/；LoomexFlow.xcodeproj 只编译 App/main.swift 入口，原 build.py 使用 Sources/main.swift。不要把规划中的模块路径或服务当作已存在的实现。
 
@@ -22,7 +22,8 @@
 python3 build.py --test --output dist
 ```
 
-- 当前 64 项 Swift 测试（原 59 项及 5 项产品布局隔离回归）需要 Apple Silicon Mac 和可用的图形会话；GitHub Actions 的 macOS 任务构建两个产品及隔离原型，Ubuntu 任务验证固定上游源码和 Python 验证脚本测试。
+- 当前 67 项 Swift 测试（原 59 项、5 项产品布局隔离及 3 项模块生命周期回归）需要 Apple Silicon Mac 和可用的图形会话；GitHub Actions 的 macOS 任务构建两个产品及隔离原型，Ubuntu 任务验证固定上游源码和 Python 验证脚本测试。
+- `python3 scripts/app_settings.py` 执行 28 个设置持久化/状态断言，无需 GUI 或权限。
 - GUI 行为改变时进行真实交互验证，编译通过不能代替交互通过。
 - 报告实际执行的命令和结果；未测的系统版本、多屏及权限行为明确标注。
 
