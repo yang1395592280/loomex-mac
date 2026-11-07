@@ -1,6 +1,6 @@
 # P0 / T0.3 监听会话与环境失效
 
-日期：2026-11-07。状态：会话策略 21/21、原点击策略 51/51、构建签名以及三轮真实监听启停通过；真实权限撤销、Dock 重启和睡眠等系统变化尚待实测。仅适用于隔离 DockProbe，产品整合及 T0.3 全部兼容矩阵尚未完成。
+日期：2026-11-07。状态：会话策略 21/21、原点击策略 51/51、构建签名、三轮真实监听启停，以及实际权限撤销/恢复与单次 Dock 重启通过。睡眠等其余系统变化尚待实测。仅适用于隔离 DockProbe，产品整合及 T0.3 全部兼容矩阵尚未完成。
 
 ## 行为
 
@@ -38,12 +38,25 @@ python3 scripts/dock_probe.py --launch
 | 新监听会话策略 | 21 passed / 0 failed |
 | 构建、ad-hoc 签名与严格校验 | 通过，arm64 / macOS 13 构建目标；实际运行在 macOS 27.0 / Xcode 27.2 |
 | CUA 触发“验证监听启停” | 3 轮安装/释放、6 项检查通过；结束 `status=stopped`、`eventTapInstalled=false`、`observationSessionActive=false` |
-| 实际权限撤销、Dock 重启、睡眠/屏幕/会话变化 | 尚未执行，不由纯测试或启停检查推断为通过 |
+| 实际关闭/恢复本原型辅助功能权限 | `observing` → `permission_lost`，监听与会话均释放；恢复权限后保持停用，手动开始成功 |
+| 实际单次重启系统 Dock | 系统 Dock PID 已变化；原型进入 `dock_changed`，监听与会话均释放；Dock 恢复后保持停用，手动开始成功 |
+| 故障实测后停止并退出 | `status=stopped`、`eventTapInstalled=false`、`observationSessionActive=false`，进程检查无原型残留 |
+| 睡眠/屏幕/会话变化 | 尚未执行，不由纯测试或以上实测推断为通过 |
 
 真实启停报告副本保存在 `.local-data/p0/dock-lifecycle-listening-passed.json`，生成物与原始报告不提交。此前自建窗口及真实 Dock 基础动作证据见 [输入与动作原型](p0-dock-input.md)，本轮不要求重复已通过的手工点击。
 
-## 后续实测边界
+## 真实故障实测
 
-实际撤销/恢复本原型辅助功能、重启系统 Dock 前说明操作范围并取得用户确认。Dock 重启会短暂影响 Dock 显示；不修改 Dock 偏好，不退出用户的其他应用。原型保持只观察，核对变化后已停用、环境恢复后可手动启动，再停止和退出。
+用户明确同意两项实测后，使用 `c15234c` 构建全程保持 `mode=observe`。先刷新同一原型身份的既有 ad-hoc 授权，再实际点击“开始观察”，核对权限、tap 和会话均有效。
+
+1. 在系统设置仅关闭本原型的辅助功能开关。界面显示权限失效，报告为 `permission_lost`，`accessibilityGranted=false`、`eventTapInstalled=false`、`observationSessionActive=false`。恢复同一开关后，界面仍保持停用；手动开始后报告更新为 `observing`，权限、tap 和会话均有效。
+2. 在活动监视器按进程名称和 PID 核对系统“程序坞”，普通退出一次，由系统自动恢复。只读进程检查和活动监视器均确认 Dock PID 已变化；原型显示 Dock 变化，报告为 `dock_changed`，tap 和会话均无效。Dock 恢复后仍保持停用，手动开始后可重新安装监听。
+3. 点击停止并退出，报告确认监听和会话释放，`pgrep -fl 'Loomex Dock Input Probe'` 无匹配。辅助功能权限已恢复，不修改 Dock 偏好，不退出其他用户应用。
+
+停用后的报告是最后一次保存的快照，不继续轮询权限。恢复开关后“不自动监听”由界面保持停用及报告未变化共同核对；权限已恢复由系统开关和随后手动开始产生的新报告核对，不能把旧快照中的 `accessibilityGranted=false` 当作恢复后的实时权限。
+
+本地证据位于 `.local-data/p0/dock-lifecycle-permission-{before,lost,restored-idle,restarted}.json`、`dock-lifecycle-dock-{before,changed,restarted}.json` 与 `dock-lifecycle-stopped.json`，均不提交。本次实际故障在没有鼠标候选时触发；故障期间已有收起/恢复候选的取消由纯策略组合测试覆盖，尚未进行真实输入中的故障注入。
+
+## 后续实测边界
 
 睡眠唤醒、屏幕重配置、多屏、Dock 三个位置/自动隐藏/放大、实际图标重排和最低系统尚未覆盖；轻微移动容忍仍保留既有保守规则。正式产品仍需 AltTab 适配的共享窗口服务，此处没有引入另一套窗口发现或缓存引擎。
