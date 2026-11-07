@@ -41,3 +41,5 @@ jobs:
         run: python3 scripts/window_probe.py --test --build
       - name: Build isolated Dock experiment
         run: python3 scripts/dock_probe.py --test --build
+      - name: Build isolated preview experiment
+        run: python3 scripts/preview_probe.py --test --build
