@@ -1,6 +1,6 @@
 # P0 / T0.3 Dock 输入原型
 
-日期：2026-11-07。状态：第一切片已实现，策略与构建、真实未授权路径通过；用户确认后已完成辅助功能授权，只读监听已安装。Dock 命中与真实输入矩阵尚未验证，T0.3 尚未通过。
+日期：2026-11-07。状态：第一切片已实现，策略与构建、真实未授权路径通过；用户确认后已完成辅助功能授权，只读监听已安装。首轮真实输入已记录后台激活、双击取消、Shift 排除及拖动时的安全放行；前台单击和无窗口补测尚待完成，T0.3 尚未通过。
 
 ## 运行
 
@@ -29,7 +29,7 @@ AX 命中发生在事件回调之后，可能受 Dock 动画和队列延迟影�
 
 - AX 读取 Dock 需要本实验应用的辅助功能授权；原 Window Probe 的授权不覆盖新 Bundle ID。
 - 鼠标只读 tap 的实际可用性由系统创建结果决定；`CGPreflightListenEventAccess` 仅记录当前状态，未提前申请输入监控。只有系统阻止 tap 且证实需要时才进一步申请。
-- 本机授权后实际返回 `accessibilityGranted=true`、`eventTapInstalled=true`、`listenEventAccess=false`，状态为 `observing`；未额外申请输入监控。tap 安装成功仍需真实输入证据，不代表输入矩阵已通过。
+- 本机授权后实际返回 `accessibilityGranted=true`、`eventTapInstalled=true`、`listenEventAccess=false`，状态为 `observing`；随后已收到用户真实鼠标操作和自身图标命中，未额外申请输入监控。该结论限于本机环境，不代表整个输入矩阵已通过。
 - 不需要屏幕录制。未操作 TCC 数据库，不修改签名以冒充其他应用。
 - 本地 ad-hoc 重建后权限可能失效，需核对当前进程真实状态，不能仅看设置开关。
 
@@ -41,6 +41,10 @@ AX 命中发生在事件回调之后，可能受 Dock 动画和队列延迟影�
 | GUI：点击“开始观察” | 显示“等待本实验应用的辅助功能授权；未安装事件监听。” |
 | 本地报告 | `status=blocked_accessibility`、`accessibilityGranted=false`、`observations=[]` |
 | 用户确认后刷新原型授权、点击开始 | `status=observing`、`accessibilityGranted=true`、`eventTapInstalled=true`；未开启额外输入监控 |
+| 用户第一轮：单击 | 按下前不在前台，记录 `background`，保持系统激活行为；本项不替代前台单击验证 |
+| 用户第一轮：快速双击 | 首次 `pending`，第二次 `rapidClick`、`clickCount=2`；后续无 `wouldHide`，候选已取消 |
+| 用户第一轮：Shift 点击 | 记录 `modifiers`、`modified=true`，未产生收起候选 |
+| 用户第一轮：短拖后放回 | 记录 `dragged=true`、`decision=uncertain`；抬起命中不可确认时放行，不宣称拖动精确命中通过 |
 | GUI：停止、关闭实验窗口、重新打开、⌘Q | 停止状态正确；实验进程在关闭窗口后保留；重新打开恢复面板，新增退出菜单支持 ⌘Q。此项不代表 Dock 命中测试通过 |
 | `python3 build.py --test --output dist-p0-dock` | 启动台 59 passed / 0 failed，构建和签名通过 |
 | `python3 scripts/window_probe.py --test` | 窗口原型确认逻辑 7 passed / 0 failed |
@@ -50,8 +54,10 @@ AX 命中发生在事件回调之后，可能受 Dock 动画和队列延迟影�
 
 报告位于 `.local-data/build/dock-probe/dock-probe-result.json`，保留最近 40 条自身图标的脱敏观察结果；生成物与报告不提交 Git。报告不是自动验收通过标记。
 
+第一轮报告副本：`.local-data/p0/dock-probe-manual-round1.json`。原始记录包含 5 条决策：后台单击 1 条、双击 2 条、Shift 点击 1 条、短拖 1 条；均未执行窗口动作。
+
 ## 待执行的实机矩阵
 
-新身份辅助功能已获用户确认并生效。CUA 获取 Dock 界面超时，当前请求用户手动完成真实 Dock 输入，并由本地报告核对；没有改用其他自动化方式发送鼠标事件。依次验证：前台单击、从后台第一次点回、快速双击、修饰键、短拖/重排、右键、关闭全部实验窗口后的 reopen、停止监听与退出。每项同时核对系统真实行为和观察报告。
+CUA 获取 Dock 界面超时，真实 Dock 输入由用户手动操作，并由本地报告核对；没有改用其他自动化方式发送鼠标事件。第一轮已完成上述四项操作。当前补测：前台单击等待结算、关闭全部实验窗口后的 reopen、右键菜单；随后验证停止监听与退出。短拖的精确命中及实际重排仍需进一步验证。
 
 Dock 三个位置、自动隐藏、放大、Dock 重启、多屏、权限撤销、睡眠唤醒和最低系统仍未验证。修改系统 Dock 配置或重启 Dock 前单独说明范围并按用户授权执行。
