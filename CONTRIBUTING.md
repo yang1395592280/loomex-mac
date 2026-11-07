@@ -22,6 +22,8 @@ python3 build.py --test --output dist
 
 需要 Apple Silicon Mac、Python 3、Xcode Command Line Tools 和可用的 macOS 图形会话。仅构建使用 `python3 build.py --output dist`。
 
+Loomex 应用骨架使用完整 Xcode，打开 `LoomexFlow.xcodeproj` 并选择共享 `LoomexFlow` scheme；CLI 与隔离试运行方式见 [Launch 应用骨架](docs/launcher-shell.md)。原启动台入口与 Xcode target 共享 `Sources/`，修改后应同时验证两个构建。
+
 试运行通过 `CLASSIC_LAUNCHPAD_SUPPORT_DIR` 指向独立目录，例如仓库内的 `.local-data/launch`。不要对个人正式布局执行测试，不要把本机应用列表和运行日志加入提交。
 
 提交前执行 `git diff --check`，并在 PR 中说明问题、行为变化、已执行的验证及未覆盖场景。界面、拖拽、快捷键、权限等改动需要对应的实际交互检查。

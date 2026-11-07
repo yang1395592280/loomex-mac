@@ -451,6 +451,7 @@ final class LaunchCanvas: LayerContainerView, NSSearchFieldDelegate, NSTextField
     var launch: ((LaunchItem) -> Void)?
     var rescan: (() -> Void)?
     var showAbout: (() -> Void)?
+    var applicationName = "经典启动台"
     private var tiles: [LaunchTile] = []
     private(set) var page = 0
     private var folderID: String?
@@ -1019,9 +1020,9 @@ final class LaunchCanvas: LayerContainerView, NSSearchFieldDelegate, NSTextField
         let sortingItem = menu.addItem(withTitle: sorting.title, action: nil, keyEquivalent: "")
         sortingItem.submenu = sorting
         menu.addItem(withTitle: "使用说明", action: #selector(helpAction), keyEquivalent: "")
-        menu.addItem(withTitle: "关于经典启动台", action: #selector(aboutAction), keyEquivalent: "")
+        menu.addItem(withTitle: "关于\(applicationName)", action: #selector(aboutAction), keyEquivalent: "")
         menu.addItem(.separator())
-        menu.addItem(withTitle: "退出经典启动台", action: #selector(quitAction), keyEquivalent: "q")
+        menu.addItem(withTitle: "退出\(applicationName)", action: #selector(quitAction), keyEquivalent: "q")
         menu.items.forEach { $0.target = self }
         return menu
     }
