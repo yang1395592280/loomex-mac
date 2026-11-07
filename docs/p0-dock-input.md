@@ -1,6 +1,6 @@
 # P0 / T0.3 Dock 输入原型
 
-日期：2026-11-07。状态：第一切片已实现，策略与构建、真实未授权路径通过；用户确认后已完成辅助功能授权，只读监听已安装。真实输入已记录后台激活、双击取消、Shift 排除、拖动时的安全放行和无窗口 reopen；用户确认右键菜单正常。前台普通单击尚未完成结算验证，T0.3 尚未通过。
+日期：2026-11-07。状态：只观察切片的基础输入实测已完成，策略与构建、未授权路径、前台普通单击结算、后台激活、双击取消、Shift 排除、拖动放行及无窗口 reopen 均有记录；用户确认右键菜单正常。已停止监听并退出。实际窗口动作与兼容矩阵尚未完成，T0.3 整体门禁尚未通过。
 
 ## 运行
 
@@ -45,10 +45,12 @@ AX 命中发生在事件回调之后，可能受 Dock 动画和队列延迟影�
 | 用户第一轮：快速双击 | 首次 `pending`，第二次 `rapidClick`、`clickCount=2`；后续无 `wouldHide`，候选已取消 |
 | 用户第一轮：Shift 点击 | 记录 `modifiers`、`modified=true`，未产生收起候选 |
 | 用户第一轮：短拖后放回 | 记录 `dragged=true`、`decision=uncertain`；抬起命中不可确认时放行，不宣称拖动精确命中通过 |
-| 用户补测：前台单击 | 两次输入均记录 `dragged=true`、`decision=drag`，按保守规则排除；尚不能判定普通单击结算通过，已请求静止指针再确认 |
+| 早期前台补测（含移动） | 两次输入均记录 `dragged=true`、`decision=drag`，按保守规则排除，不计作普通单击通过证据 |
+| 用户最终补测：静止指针前台单击 | 连续记录 3 次 `pending → wouldHide`，均为 `foregroundBefore=true`、`dragged=false`、`modified=false`、`clickCount=1`；只记录判定，未隐藏窗口 |
 | 用户补测：无窗口后点 Dock | 记录 `ordinaryWindowsBefore=0`、`decision=noWindows`；用户确认窗口重新打开正常 |
 | 用户补测：右键菜单 | 用户确认系统菜单正常并可关闭；只读原型不吞右键，也不写非主键候选 |
 | GUI：停止、关闭实验窗口、重新打开、⌘Q | 停止状态正确；实验进程在关闭窗口后保留；重新打开恢复面板，新增退出菜单支持 ⌘Q。此项不代表 Dock 命中测试通过 |
+| GUI：实测结束后停止监听、⌘Q 退出 | 界面显示停止；报告 `status=stopped`、`eventTapInstalled=false`；进程检查确认无 `DockInputExperiment` 残留 |
 | `python3 build.py --test --output dist-p0-dock` | 启动台 59 passed / 0 failed，构建和签名通过 |
 | `python3 scripts/window_probe.py --test` | 窗口原型确认逻辑 7 passed / 0 failed |
 | T0.2 最新 CI run 42274828019 | 首次 hosted runner 容量不足，未执行构建；重跑后两项 job 成功 |
@@ -61,8 +63,12 @@ AX 命中发生在事件回调之后，可能受 Dock 动画和队列延迟影�
 
 补测报告副本：`.local-data/p0/dock-probe-manual-round2.json`。新增 2 条 `drag` 和 1 条 `noWindows`。当前任意 `leftMouseDragged` 都会被排除；用户意图为单击的输入若包含这类事件也会放行，点击容忍度仍需实机评估，不能只凭纯策略测试认定可用性。
 
-## 待执行的实机矩阵
+最终完整输入副本：`.local-data/p0/dock-probe-manual-complete.json`，包含 3 次前台普通单击结算。停止与退出报告：`.local-data/p0/dock-probe-stopped.json`。真实鼠标输入由用户操作，界面停止与退出由 CUA 操作，本地报告和进程检查交叉核对；没有为通过测试放宽拖动规则。
 
-CUA 获取 Dock 界面超时，真实 Dock 输入由用户手动操作，并由本地报告核对；没有改用其他自动化方式发送鼠标事件。第一轮和无窗口/右键补测已完成。当前补测：静止指针的前台单击等待结算；随后验证停止监听与退出。首次短拖的抬起命中及实际重排仍需进一步验证。
+## 剩余验证与实现
+
+本轮基础输入与清理验证已结束，无需重复以上手工操作。CUA 获取 Dock 界面超时，真实 Dock 输入由用户手动操作；没有改用其他自动化方式发送鼠标事件。首次短拖的抬起命中仍不确定，实际 Dock 重排尚未验证。
+
+后续需要验证自建窗口的实际隐藏/最小化与恢复动作、系统默认点击与增强动作的时序，以及轻微移动的点击容忍度。`wouldHide` 是观察结果，不能作为隐藏动作成功的证据；最终实现仍需复用统一窗口服务。
 
 Dock 三个位置、自动隐藏、放大、Dock 重启、多屏、权限撤销、睡眠唤醒和最低系统仍未验证。修改系统 Dock 配置或重启 Dock 前单独说明范围并按用户授权执行。
