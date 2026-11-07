@@ -191,7 +191,7 @@ final class DockProbeDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate
         if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
             DispatchQueue.main.async {
                 guard self.session.accepts(token) else { return }
-                self.stopObservation(state: "tap_disabled")
+                self.stopObservation(state: AXIsProcessTrusted() ? "tap_disabled" : "permission_lost")
             }
             return
         }
