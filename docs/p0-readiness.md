@@ -10,7 +10,7 @@
 | P0-B / T0.2 | 自建 Fixture 的枚举、聚焦、隐藏、最小化/定向恢复及 AX 拒绝路径 | AltTab 适配、真实应用窗口、卡顿/超时、窗口复用及兼容矩阵 |
 | P0-C / T0.3 | 自身 Dock 输入序列、自建窗口动作、权限撤销恢复与单次 Dock 重启 | 真实应用、轻微拖动容忍、位置/自动隐藏/放大、重排、输入期间故障、睡眠及多屏 |
 | P0-D / T0.4 | macOS 27 固定自建样本的单次公共 API 截图、无权限图标降级及释放 | macOS 13–26 实机、Space/全屏/多屏、受保护窗口、录屏撤销、真实系统迟到回调 |
-| P0-E / T0.5 | 50 次真实截图开关、原型空闲 CPU/footprint 基线；新增生命周期路径验证进行中 | 组合应用预算、Launch/Switch P95、长期泄漏及实际 AltTab 适配层成本 |
+| P0-E / T0.5 | 50 次真实截图开关、原型空闲 CPU/footprint 基线；选择、最小化、关闭、失去前台、隐藏/显式恢复及退出后的释放 | 组合应用预算、Launch/Switch P95、长期泄漏及实际 AltTab 适配层成本 |
 
 证据分别见 [构建基线](p0-baseline.md)、[窗口原型](p0-window-probe.md)、[Dock 输入](p0-dock-input.md)、[Dock 生命周期](p0-dock-lifecycle.md)、[预览原型](p0-preview-probe.md) 和 [资源基线](p0-preview-budget.md)。CI 只证明它执行的构建和自动测试，不能代替表中的系统行为。
 
