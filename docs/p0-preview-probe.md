@@ -46,9 +46,10 @@ python3 scripts/preview_probe.py --test --build
 | CUA：收起预览并释放 | 界面显示 `stopped`，内存图片 0 字节，系统在途 0 |
 | 退出清理 | 原型已退出，进程检查无残留 |
 | 退出后本地脱敏报告 | `stopped`、预检通过、面板关闭、缓存 0、在途 0，仍保留请求 1 / 完成 1；图片宽高均为 0 |
+| 后续 50 次真实截图开关 | 每次就绪和释放已检查；含一次预热累计请求/完成 51/51，详见 [资源基线](p0-preview-budget.md) |
 | 截图失败/权限撤销/真实在途回调延迟 | 尚未验证；纯状态测试不替代这些系统行为实测 |
 
-纯状态测试中的 50 次循环只证明状态计数和缓存失效，不是 50 次真实截图或内存 footprint 基准。资源/延迟预算由 T0.5 实测，不将单张预算冒充进程内存上限。
+纯状态测试中的 50 次循环只证明状态计数和缓存失效；后续另行执行了上述 50 次真实截图与资源采样。延迟与组合应用预算仍待 T0.5 复核，不将单张图片预算冒充进程内存上限。
 
 本地证据为 `.local-data/p0/preview-permission-denied.json`、`preview-icon-selection.json`，以及授权后同一会话的 `preview-capture-ready.json`、`preview-capture-released.json`、`preview-capture-exited.json`，均为不含画面的脱敏技术报告，不提交。原型的“选择样本窗口”只是同进程 AppKit 操作，用于证明降级界面可继续选择，不代表 AltTab 或跨应用切换已集成。
 
